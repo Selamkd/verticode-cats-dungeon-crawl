@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../model/const';
-import { PAL } from '../model/palette';
 
+import { hexToNum } from '../helpers/color';
+import { GAME_WIDTH, GAME_HEIGHT, ROWS, COLS, TILE_SIZE } from '../model/const';
+import { FUSE_POSITIONS, isWallAt, PLAYER_START } from '../model/dungeon';
+import { PAL } from '../model/palette';
 
 type GameSceneData = {
   catIndex?: number;
@@ -9,7 +11,6 @@ type GameSceneData = {
 
 export class GameScene extends Phaser.Scene {
   private catIndex = 0;
-  private elapsedText?: Phaser.GameObjects.Text;
 
   constructor() {
     super('Game');
@@ -22,35 +23,22 @@ export class GameScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor(PAL.void);
 
-    this.add
-      .text(GAME_WIDTH / 2, 80, 'Game Scene', {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '28px',
-        fontStyle: 'bold',
-        color: PAL.gold,
-      })
-      .setOrigin(0.5);
+    this.drawDebugDungeon();
+    this.drawDebugFuses();
+    this.drawDebugPlayer();
 
     this.add
-      .text(GAME_WIDTH / 2, 130, `Selected cat index: ${this.catIndex}`, {
+      .text(GAME_WIDTH / 2, 16, `Selected cat index: ${this.catIndex}`, {
         fontFamily: 'Courier New, monospace',
         fontSize: '14px',
         color: PAL.ui,
       })
       .setOrigin(0.5);
 
-    this.elapsedText = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Elapsed: 0.00', {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '16px',
-        color: PAL.ui,
-      })
-      .setOrigin(0.5);
-
     this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 80, 'Press SPACE to end game', {
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 24, 'SPACE: Game Over test', {
         fontFamily: 'Courier New, monospace',
-        fontSize: '14px',
+        fontSize: '13px',
         color: PAL.accent,
       })
       .setOrigin(0.5);
@@ -59,14 +47,63 @@ export class GameScene extends Phaser.Scene {
       this.scene.start('GameOver', {
         won: true,
         catIndex: this.catIndex,
-        fusesLit: 6,
+        fusesLit: FUSE_POSITIONS.length,
         timeLeft: 54,
       });
     });
   }
 
-update(time: number) {
-  const pulse = 1 + Math.sin(time * 0.006) * 0.1;
-  this.elapsedText?.setScale(pulse);
-}
+  private drawDebugDungeon() {
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const x = col * TILE_SIZE + TILE_SIZE / 2;
+        const y = row * TILE_SIZE + TILE_SIZE / 2;
+
+        const isWall = isWallAt(col, row);
+
+        this.add
+          .rectangle(
+            x,
+            y,
+            TILE_SIZE,
+            TILE_SIZE,
+            hexToNum(isWall ? PAL.wallMid : PAL.floorA),
+          )
+          .setStrokeStyle(1, hexToNum('#0e0e18'), 0.7);
+      }
+    }
+  }
+
+  private drawDebugFuses() {
+    FUSE_POSITIONS.forEach((pos, index) => {
+      const x = pos.col * TILE_SIZE + TILE_SIZE / 2;
+      const y = pos.row * TILE_SIZE + TILE_SIZE / 2;
+
+      this.add.circle(x, y, 10, hexToNum(PAL.fuseOff));
+
+      this.add
+        .text(x, y - 22, String(index + 1), {
+          fontFamily: 'Courier New, monospace',
+          fontSize: '12px',
+          color: PAL.gold,
+        })
+        .setOrigin(0.5);
+    });
+  }
+
+  private drawDebugPlayer() {
+    const x = PLAYER_START.col * TILE_SIZE + TILE_SIZE / 2;
+    const y = PLAYER_START.row * TILE_SIZE + TILE_SIZE / 2;
+
+    this.add.circle(x, y, 14, hexToNum(PAL.accent));
+
+    this.add
+      .text(x, y, 'C', {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '14px',
+        fontStyle: 'bold',
+        color: '#ffffff',
+      })
+      .setOrigin(0.5);
+  }
 }
