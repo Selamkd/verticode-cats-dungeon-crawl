@@ -65,8 +65,8 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  update(time: number) {
-    const seconds = time / 1000;
-    this.elapsedText?.setText(`Elapsed: ${seconds.toFixed(2)}`);
-  }
+update(time: number) {
+  const pulse = 1 + Math.sin(time * 0.006) * 0.1;
+  this.elapsedText?.setScale(pulse);
+}
 }

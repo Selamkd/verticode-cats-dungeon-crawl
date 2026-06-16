@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 
-import './style.css';
+import './styles.css';
 
 
 
