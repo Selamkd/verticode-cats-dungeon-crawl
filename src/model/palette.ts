@@ -1,0 +1,16 @@
+export const PAL = {
+  void: '#05050e',
+  wallDark: '#1c1c2e',
+  wallMid: '#282840',
+  wallHi: '#3a3a54',
+  floorA: '#14141e',
+  floorB: '#18182a',
+  fuseOff: '#553320',
+  fuseGlow: '#ffaa22',
+  fuseLit: '#ffe080',
+  gold: '#ffcc44',
+  danger: '#ff4444',
+  ui: '#d0cce0',
+  title: '#f0e8d0',
+  accent: '#9b6dff',
+} as const;
