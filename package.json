@@ -15,10 +15,10 @@
     "@typescript-eslint/parser": "^5.55.0",
     "eslint": "^8.36.0",
     "eslint-plugin-unused-imports": "^2.0.0",
-    "typescript": "^4.9.3",
-    "vite": "^4.5.2"
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
   },
   "dependencies": {
-    "phaser": "^3.6.0"
+    "phaser": "^4.1.0"
   }
 }
