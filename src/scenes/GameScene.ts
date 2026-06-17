@@ -78,7 +78,11 @@ export class GameScene extends Phaser.Scene {
   private darknessTexture?: Phaser.Textures.CanvasTexture;
   private darknessImage?: Phaser.GameObjects.Image;
   private fogWisps: Phaser.GameObjects.Image[] = [];
+  private heldTouchDirection?: MoveDirection;
+private mobileLayer?: Phaser.GameObjects.Container;
 
+
+ 
   private darkLevel = 0;
   private darkPulse = 0;
 
@@ -153,6 +157,14 @@ export class GameScene extends Phaser.Scene {
     this.updateLitFuseGlow(time);
   }
 
+  private wasdKeys?: {
+  W: Phaser.Input.Keyboard.Key;
+  A: Phaser.Input.Keyboard.Key;
+  S: Phaser.Input.Keyboard.Key;
+  D: Phaser.Input.Keyboard.Key;
+  E: Phaser.Input.Keyboard.Key;
+};
+
   private handleMovementInput() {
     if (!this.gameActive) return;
     if (!this.cursors) return;
@@ -168,6 +180,7 @@ export class GameScene extends Phaser.Scene {
       this.movePlayer(0, 1, 'down');
     }
   }
+
 
   private movePlayer(dx: number, dy: number, direction: CatDirection) {
     if (!this.playerSprite || !this.playerGlow) return;

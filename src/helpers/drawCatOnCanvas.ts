@@ -123,3 +123,9 @@ export function drawCatOnCanvas(
     }
   }
 }
+
+type MoveDirection = {
+  dx: number;
+  dy: number;
+  dir: CatDirection;
+};
