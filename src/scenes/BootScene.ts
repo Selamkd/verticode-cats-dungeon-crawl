@@ -37,7 +37,7 @@ export class BootScene extends Phaser.Scene {
     ctx.fillRect(1, TILE_SIZE - 3, TILE_SIZE - 2, 2);
     ctx.fillRect(TILE_SIZE - 3, 1, 2, TILE_SIZE - 2);
 
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 5; i++) {
       const bx = 2 + Math.random() * (TILE_SIZE - 6);
       const by = 4 + Math.random() * (TILE_SIZE - 8);
       const bw = 3 + Math.random() * 4;
@@ -61,7 +61,7 @@ export class BootScene extends Phaser.Scene {
     ctx.fillStyle = PAL.floorA;
     ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
 
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 30; i++) {
       ctx.fillStyle = Math.random() > 0.5 ? PAL.floorB : '#111118';
 
       ctx.fillRect(
