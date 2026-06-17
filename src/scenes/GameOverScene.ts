@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../model/const';
 import { PAL } from '../model/palette';
+import { FUSE_POSITIONS } from '../model/dungeon';
 
 type GameOverData = {
   won?: boolean;
@@ -43,7 +44,7 @@ export class GameOverScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(GAME_WIDTH / 2, 260, `Fuses lit: ${this.result.fusesLit} / 6`, {
+      .text(GAME_WIDTH / 2, 260, `Fuses lit: ${this.result.fusesLit} / ${FUSE_POSITIONS.length}`, {
         fontFamily: 'Courier New, monospace',
         fontSize: '14px',
         color: PAL.ui,
