@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 
-import { drawCatOnCanvas, type CatDirection } from '../helpers/drawCatOnCanvas';
-import { CATS } from '../model/cats';
+import { preloadCatSprites } from '../helpers/catSpriteConfig';
 import { TILE_SIZE } from '../model/const';
 import { PAL } from '../model/palette';
 
@@ -10,12 +9,15 @@ export class BootScene extends Phaser.Scene {
     super('Boot');
   }
 
+  preload() {
+    preloadCatSprites(this);
+  }
+
   create() {
     this.createWallTexture();
     this.createFloorTexture();
     this.createFuseTextures();
     this.createLightTextures();
-    this.createCatTextures();
     this.createParticleTextures();
 
     this.scene.start('Menu');
@@ -23,7 +25,7 @@ export class BootScene extends Phaser.Scene {
 
   private createWallTexture() {
     const texture = this.textures.createCanvas('wall', TILE_SIZE, TILE_SIZE);
-   if(!texture) return;
+    if (!texture) return;
     const ctx = texture.context;
 
     ctx.fillStyle = PAL.wallMid;
@@ -55,7 +57,7 @@ export class BootScene extends Phaser.Scene {
 
   private createFloorTexture() {
     const texture = this.textures.createCanvas('floor', TILE_SIZE, TILE_SIZE);
-     if(!texture) return;
+    if (!texture) return;
     const ctx = texture.context;
 
     ctx.fillStyle = PAL.floorA;
@@ -63,7 +65,6 @@ export class BootScene extends Phaser.Scene {
 
     for (let i = 0; i < 30; i++) {
       ctx.fillStyle = Math.random() > 0.5 ? PAL.floorB : '#111118';
-
       ctx.fillRect(
         Math.random() * TILE_SIZE,
         Math.random() * TILE_SIZE,
@@ -83,7 +84,7 @@ export class BootScene extends Phaser.Scene {
     for (const lit of [false, true]) {
       const key = lit ? 'fuseLit' : 'fuseOff';
       const texture = this.textures.createCanvas(key, TILE_SIZE, TILE_SIZE);
-       if(!texture) return;
+      if (!texture) return;
       const ctx = texture.context;
 
       const cx = TILE_SIZE / 2;
@@ -91,11 +92,9 @@ export class BootScene extends Phaser.Scene {
 
       if (lit) {
         const glow = ctx.createRadialGradient(cx, cy, 2, cx, cy, TILE_SIZE / 2);
-
         glow.addColorStop(0, PAL.fuseLit);
         glow.addColorStop(0.4, PAL.fuseGlow);
         glow.addColorStop(1, 'rgba(255,170,34,0)');
-
         ctx.fillStyle = glow;
         ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
       }
@@ -131,7 +130,7 @@ export class BootScene extends Phaser.Scene {
     for (const size of [200, 120, 80]) {
       const key = `light${size}`;
       const texture = this.textures.createCanvas(key, size, size);
-       if(!texture) return;
+      if (!texture) return;
       const ctx = texture.context;
 
       const radius = size / 2;
@@ -149,37 +148,9 @@ export class BootScene extends Phaser.Scene {
     }
   }
 
-  private createCatTextures() {
-    const directions: CatDirection[] = ['down', 'up', 'left', 'right'];
-
-    CATS.forEach((cat, catIndex) => {
-      directions.forEach((direction) => {
-        for (let frame = 0; frame < 3; frame++) {
-          const key = `cat_${catIndex}_${direction}_${frame}`;
-          const texture = this.textures.createCanvas(key, 32, 32);
-   if(!texture) return;
-          drawCatOnCanvas(texture.context, cat, direction, frame);
-          texture.refresh();
-        }
-      });
-
-      const portraitKey = `cat_portrait_${catIndex}`;
-      const portrait = this.textures.createCanvas(portraitKey, 64, 64);
-      if(!portrait) return;
-      const ctx = portrait.context;
-
-      ctx.save();
-      ctx.scale(2, 2);
-      drawCatOnCanvas(ctx, cat, 'down', 0);
-      ctx.restore();
-
-      portrait.refresh();
-    });
-  }
-
   private createParticleTextures() {
     const particle = this.textures.createCanvas('particle', 8, 8);
-    if(!particle) return;
+    if (!particle) return;
     const particleCtx = particle.context;
 
     const particleGradient = particleCtx.createRadialGradient(4, 4, 0, 4, 4, 4);
@@ -192,7 +163,7 @@ export class BootScene extends Phaser.Scene {
     particle.refresh();
 
     const dust = this.textures.createCanvas('dust', 4, 4);
-    if(!dust) return;
+    if (!dust) return;
     const dustCtx = dust.context;
 
     const dustGradient = dustCtx.createRadialGradient(2, 2, 0, 2, 2, 2);

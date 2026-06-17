@@ -1,6 +1,11 @@
 import Phaser from 'phaser';
 import { sfx } from '../systems/SFX';
 
+import {
+  CAT_MENU_DISPLAY_SCALE,
+  CAT_SPRITES,
+  getCatSpriteKey,
+} from '../helpers/catSpriteConfig';
 import { hexToNum } from '../helpers/color';
 import { CatDefinition, CATS } from '../model/cats';
 import { GAME_WIDTH, GAME_HEIGHT } from '../model/const';
@@ -8,7 +13,7 @@ import { PAL } from '../model/palette';
 
 type CatCard = {
   card: Phaser.GameObjects.Rectangle;
-  portrait: Phaser.GameObjects.Image;
+  portrait: Phaser.GameObjects.Sprite;
   nameText: Phaser.GameObjects.Text;
   descText: Phaser.GameObjects.Text;
   index: number;
@@ -21,6 +26,7 @@ export class MenuScene extends Phaser.Scene {
   private detailNameText?: Phaser.GameObjects.Text;
   private detailStoryText?: Phaser.GameObjects.Text;
   private detailAbilityText?: Phaser.GameObjects.Text;
+  private selectedPreview?: Phaser.GameObjects.Sprite;
 
   constructor() {
     super('Menu');
@@ -39,15 +45,15 @@ export class MenuScene extends Phaser.Scene {
     this.selectCat(0);
 
     this.input.keyboard?.on('keydown-LEFT', () => {
-    sfx.resume();
-    sfx.select();
+      sfx.resume();
+      sfx.select();
       this.selectCat(Math.max(0, this.selectedCat - 1));
     });
 
     this.input.keyboard?.on('keydown-RIGHT', () => {
-        sfx.resume();
-        sfx.select();
-        this.selectCat(Math.min(CATS.length - 1, this.selectedCat + 1));
+      sfx.resume();
+      sfx.select();
+      this.selectCat(Math.min(Math.min(CATS.length, CAT_SPRITES.length) - 1, this.selectedCat + 1));
     });
 
     this.input.keyboard?.on('keydown-ENTER', () => {
@@ -82,19 +88,19 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private buildTitle() {
-    const titleY = 70;
+    const titleY = 60;
 
     this.add
       .text(GAME_WIDTH / 2, titleY, 'VERTICODE CATS', {
         fontFamily: 'Courier New, monospace',
-        fontSize: '36px',
+        fontSize: '34px',
         fontStyle: 'bold',
         color: PAL.title,
       })
       .setOrigin(0.5);
 
     this.add
-      .text(GAME_WIDTH / 2, titleY + 40, 'D U N G E O N   C R A W L', {
+      .text(GAME_WIDTH / 2, titleY + 38, 'D U N G E O N   C R A W L', {
         fontFamily: 'Courier New, monospace',
         fontSize: '14px',
         color: PAL.accent,
@@ -102,7 +108,7 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     const themeTag = this.add
-      .text(GAME_WIDTH / 2, titleY + 65, "— it's spreading —", {
+      .text(GAME_WIDTH / 2, titleY + 62, "— it's spreading —", {
         fontFamily: 'Georgia, serif',
         fontSize: '13px',
         fontStyle: 'italic',
@@ -119,7 +125,7 @@ export class MenuScene extends Phaser.Scene {
     });
 
     this.add
-      .text(GAME_WIDTH / 2, 160, 'Choose your cat', {
+      .text(GAME_WIDTH / 2, 142, 'Choose your cat', {
         fontFamily: 'Courier New, monospace',
         fontSize: '16px',
         color: PAL.ui,
@@ -130,23 +136,27 @@ export class MenuScene extends Phaser.Scene {
   private buildCatCards() {
     this.catCards = [];
 
-    const startX = GAME_WIDTH / 2 - ((CATS.length - 1) * 90) / 2;
+    const count = Math.min(CATS.length, CAT_SPRITES.length);
+    const startX = GAME_WIDTH / 2 - ((count - 1) * 86) / 2;
 
-    CATS.forEach((cat:CatDefinition, index: number) => {
-      const x = startX + index * 90;
-      const y = 240;
+    CATS.slice(0, count).forEach((cat: CatDefinition, index: number) => {
+      const x = startX + index * 86;
+      const y = 230;
 
       const card = this.add
-        .rectangle(x, y, 74, 94, hexToNum(PAL.wallMid), 0.6)
+        .rectangle(x, y, 74, 98, hexToNum(PAL.wallMid), 0.6)
         .setStrokeStyle(2, hexToNum(PAL.accent), 0.3)
         .setInteractive({ useHandCursor: true });
 
-      const portrait = this.add.image(x, y - 14, `cat_portrait_${index}`);
+      const portrait = this.add
+        .sprite(x, y - 18, getCatSpriteKey(index), 0)
+        .setScale(CAT_MENU_DISPLAY_SCALE)
+        .setOrigin(0.5, 0.58);
 
       const nameText = this.add
         .text(x, y + 30, cat.name, {
           fontFamily: 'Courier New, monospace',
-          fontSize: '11px',
+          fontSize: '10px',
           color: PAL.ui,
         })
         .setOrigin(0.5);
@@ -154,17 +164,17 @@ export class MenuScene extends Phaser.Scene {
       const descText = this.add
         .text(x, y + 43, cat.desc, {
           fontFamily: 'Georgia, serif',
-          fontSize: '9px',
+          fontSize: '8px',
           fontStyle: 'italic',
           color: '#888',
         })
         .setOrigin(0.5);
 
       card.on('pointerdown', () => {
-       sfx.resume();
-       sfx.select();
-       this.selectCat(index);
-       });
+        sfx.resume();
+        sfx.select();
+        this.selectCat(index);
+      });
 
       card.on('pointerover', () => {
         if (index !== this.selectedCat) {
@@ -190,11 +200,16 @@ export class MenuScene extends Phaser.Scene {
 
   private buildDetailsPanel() {
     this.add
-      .rectangle(GAME_WIDTH / 2, 365, 620, 118, 0x0a0a14, 0.82)
+      .rectangle(GAME_WIDTH / 2, 372, 640, 132, 0x0a0a14, 0.82)
       .setStrokeStyle(1, hexToNum(PAL.accent), 0.25);
 
+    this.selectedPreview = this.add
+      .sprite(GAME_WIDTH / 2 - 260, 370, getCatSpriteKey(0), 0)
+      .setScale(1.15)
+      .setOrigin(0.5, 0.58);
+
     this.detailNameText = this.add
-      .text(GAME_WIDTH / 2, 318, '', {
+      .text(GAME_WIDTH / 2 + 30, 324, '', {
         fontFamily: 'Courier New, monospace',
         fontSize: '15px',
         fontStyle: 'bold',
@@ -203,27 +218,27 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.detailStoryText = this.add
-      .text(GAME_WIDTH / 2, 350, '', {
+      .text(GAME_WIDTH / 2 + 30, 360, '', {
         fontFamily: 'Georgia, serif',
         fontSize: '13px',
         fontStyle: 'italic',
         color: '#a8a0ba',
         align: 'center',
         wordWrap: {
-          width: 560,
+          width: 480,
         },
         lineSpacing: 4,
       })
       .setOrigin(0.5);
 
     this.detailAbilityText = this.add
-      .text(GAME_WIDTH / 2, 410, '', {
+      .text(GAME_WIDTH / 2 + 30, 420, '', {
         fontFamily: 'Courier New, monospace',
         fontSize: '12px',
         color: PAL.accent,
         align: 'center',
         wordWrap: {
-          width: 560,
+          width: 480,
         },
       })
       .setOrigin(0.5);
@@ -231,12 +246,12 @@ export class MenuScene extends Phaser.Scene {
 
   private buildStartButton() {
     const startButton = this.add
-      .rectangle(GAME_WIDTH / 2, 500, 180, 48, hexToNum(PAL.accent), 0.9)
+      .rectangle(GAME_WIDTH / 2, 510, 190, 48, hexToNum(PAL.accent), 0.9)
       .setStrokeStyle(2, 0xffffff, 0.2)
       .setInteractive({ useHandCursor: true });
 
     this.add
-      .text(GAME_WIDTH / 2, 500, 'ENTER THE DUNGEON', {
+      .text(GAME_WIDTH / 2, 510, 'ENTER THE DUNGEON', {
         fontFamily: 'Courier New, monospace',
         fontSize: '12px',
         fontStyle: 'bold',
@@ -261,7 +276,7 @@ export class MenuScene extends Phaser.Scene {
 
   private buildControlsText() {
     this.add
-      .text(GAME_WIDTH / 2, 555, 'Arrow keys to choose  ·  Enter or Space to start', {
+      .text(GAME_WIDTH / 2, 560, 'Arrow keys to choose  ·  Enter or Space to start  ·  Tap cards on mobile', {
         fontFamily: 'Courier New, monospace',
         fontSize: '11px',
         color: '#555266',
@@ -278,10 +293,11 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private selectCat(index: number) {
-    this.selectedCat = index;
+    const count = Math.min(CATS.length, CAT_SPRITES.length);
+    this.selectedCat = Phaser.Math.Clamp(index, 0, count - 1);
 
     this.catCards.forEach((cardData) => {
-      const selected = cardData.index === index;
+      const selected = cardData.index === this.selectedCat;
 
       cardData.card.setStrokeStyle(
         selected ? 3 : 2,
@@ -294,12 +310,14 @@ export class MenuScene extends Phaser.Scene {
         selected ? 0.9 : 0.6,
       );
 
-      cardData.portrait.setScale(selected ? 1.1 : 1);
+      cardData.portrait.setScale(selected ? CAT_MENU_DISPLAY_SCALE * 1.12 : CAT_MENU_DISPLAY_SCALE);
       cardData.nameText.setColor(selected ? PAL.gold : PAL.ui);
     });
 
-    const cat = CATS[index];
+    const cat = CATS[this.selectedCat];
 
+    this.selectedPreview?.setTexture(getCatSpriteKey(this.selectedCat));
+    this.selectedPreview?.setFrame(0);
     this.detailNameText?.setText(`${cat.name}  ·  ${cat.desc}`);
     this.detailStoryText?.setText(cat.backstory);
     this.detailAbilityText?.setText(
@@ -308,8 +326,8 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private startGame() {
-     sfx.resume();
-     sfx.start()
+    sfx.resume();
+    sfx.start();
     this.cameras.main.fadeOut(400, 5, 5, 14);
 
     this.time.delayedCall(400, () => {
