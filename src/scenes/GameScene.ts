@@ -97,7 +97,7 @@ export class GameScene extends Phaser.Scene {
   private centerText?: Phaser.GameObjects.Text;
 
   private darknessTexture?: Phaser.Textures.CanvasTexture;
-  private darknessImage?: Phaser.GameObjects.Image;
+
   private fogWisps: Phaser.GameObjects.Image[] = [];
 
   private darkLevel = 0;
@@ -115,7 +115,7 @@ export class GameScene extends Phaser.Scene {
     this.fogWisps = [];
 
     this.darknessTexture = undefined;
-    this.darknessImage = undefined;
+
     this.darkLevel = 0;
     this.darkPulse = 0;
 
@@ -319,10 +319,7 @@ export class GameScene extends Phaser.Scene {
       GAME_HEIGHT,
     ) as Phaser.Textures.CanvasTexture;
 
-    this.darknessImage = this.add
-      .image(0, 0, textureKey)
-      .setOrigin(0, 0)
-      .setDepth(50);
+
   }
 
   private buildFogWisps() {
