@@ -1,4 +1,4 @@
-import type { CatDefinition } from '../data/cats';
+import { CatDefinition } from "../model/cats";
 
 export type CatDirection = 'down' | 'up' | 'left' | 'right';
 
