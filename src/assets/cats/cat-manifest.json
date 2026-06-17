@@ -1,0 +1,121 @@
+[
+  {
+    "index": 0,
+    "id": "cat_0_yuki",
+    "displayName": "Yuki",
+    "sheet64": "assets/cats/sheets_64/cat_0_yuki.png",
+    "sheet128": "assets/cats/sheets_128/cat_0_yuki.png",
+    "directions": {
+      "down": 0,
+      "up": 1,
+      "left": 2,
+      "right": 3
+    },
+    "frameWidth64": 64,
+    "frameHeight64": 64,
+    "frameWidth128": 128,
+    "frameHeight128": 128
+  },
+  {
+    "index": 1,
+    "id": "cat_1_kika",
+    "displayName": "Kika",
+    "sheet64": "assets/cats/sheets_64/cat_1_kika.png",
+    "sheet128": "assets/cats/sheets_128/cat_1_kika.png",
+    "directions": {
+      "down": 0,
+      "up": 1,
+      "left": 2,
+      "right": 3
+    },
+    "frameWidth64": 64,
+    "frameHeight64": 64,
+    "frameWidth128": 128,
+    "frameHeight128": 128
+  },
+  {
+    "index": 2,
+    "id": "cat_2_tim",
+    "displayName": "Tim",
+    "sheet64": "assets/cats/sheets_64/cat_2_tim.png",
+    "sheet128": "assets/cats/sheets_128/cat_2_tim.png",
+    "directions": {
+      "down": 0,
+      "up": 1,
+      "left": 2,
+      "right": 3
+    },
+    "frameWidth64": 64,
+    "frameHeight64": 64,
+    "frameWidth128": 128,
+    "frameHeight128": 128
+  },
+  {
+    "index": 3,
+    "id": "cat_3_rizz_figgy",
+    "displayName": "Rizzzo + Figgy",
+    "sheet64": "assets/cats/sheets_64/cat_3_rizz_figgy.png",
+    "sheet128": "assets/cats/sheets_128/cat_3_rizz_figgy.png",
+    "directions": {
+      "down": 0,
+      "up": 1,
+      "left": 2,
+      "right": 3
+    },
+    "frameWidth64": 64,
+    "frameHeight64": 64,
+    "frameWidth128": 128,
+    "frameHeight128": 128
+  },
+  {
+    "index": 4,
+    "id": "cat_4_june_joe",
+    "displayName": "June + Joe",
+    "sheet64": "assets/cats/sheets_64/cat_4_june_joe.png",
+    "sheet128": "assets/cats/sheets_128/cat_4_june_joe.png",
+    "directions": {
+      "down": 0,
+      "up": 1,
+      "left": 2,
+      "right": 3
+    },
+    "frameWidth64": 64,
+    "frameHeight64": 64,
+    "frameWidth128": 128,
+    "frameHeight128": 128
+  },
+  {
+    "index": 5,
+    "id": "cat_5_merin",
+    "displayName": "Merin",
+    "sheet64": "assets/cats/sheets_64/cat_5_merin.png",
+    "sheet128": "assets/cats/sheets_128/cat_5_merin.png",
+    "directions": {
+      "down": 0,
+      "up": 1,
+      "left": 2,
+      "right": 3
+    },
+    "frameWidth64": 64,
+    "frameHeight64": 64,
+    "frameWidth128": 128,
+    "frameHeight128": 128
+  },
+  {
+    "index": 6,
+    "id": "cat_6_teddy",
+    "displayName": "Teddy",
+    "sheet64": "assets/cats/sheets_64/cat_6_teddy.png",
+    "sheet128": "assets/cats/sheets_128/cat_6_teddy.png",
+    "directions": {
+      "down": 0,
+      "up": 1,
+      "left": 2,
+      "right": 3
+    },
+    "frameWidth64": 64,
+    "frameHeight64": 64,
+    "frameWidth128": 128,
+    "frameHeight128": 128
+  }
+]

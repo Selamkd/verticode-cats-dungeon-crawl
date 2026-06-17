@@ -1,8 +1,14 @@
 import Phaser from 'phaser';
 
+import {
+  CAT_SPRITE_DISPLAY_SCALE,
+  SpriteDirection as CatDirection,
+  getCatFrame,
+  getCatSpriteKey,
+} from '../helpers/catSpriteConfig';
 import { hexToNum } from '../helpers/color';
-import type { CatDirection } from '../helpers/drawCatOnCanvas';
 import { CATS } from '../model/cats';
+import { sfx } from '../systems/SFX';
 import {
   gridToWorld,
   GAME_WIDTH,
@@ -40,25 +46,41 @@ type Torch = {
   radius: number;
 };
 
+type MoveDirection = {
+  dx: number;
+  dy: number;
+  direction: CatDirection;
+};
+
 export class GameScene extends Phaser.Scene {
   private catIndex = 0;
 
   private dungeonLayer?: Phaser.GameObjects.Container;
   private uiContainer?: Phaser.GameObjects.Container;
+  private mobileLayer?: Phaser.GameObjects.Container;
 
   private fuseSprites: FuseSprite[] = [];
   private torches: Torch[] = [];
 
-  private playerSprite?: Phaser.GameObjects.Image;
+  private playerSprite?: Phaser.GameObjects.Sprite;
   private playerGlow?: Phaser.GameObjects.Arc;
+  private playerShadow?: Phaser.GameObjects.Ellipse;
 
   private playerCol = PLAYER_START.col;
   private playerRow = PLAYER_START.row;
   private playerDir: CatDirection = 'down';
-  private walkFrame = 0;
   private isMoving = false;
 
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
+  private wasdKeys?: {
+    W: Phaser.Input.Keyboard.Key;
+    A: Phaser.Input.Keyboard.Key;
+    S: Phaser.Input.Keyboard.Key;
+    D: Phaser.Input.Keyboard.Key;
+    E: Phaser.Input.Keyboard.Key;
+  };
+
+  private heldTouchDirection?: MoveDirection;
 
   private fuseSequence: number[] = [];
   private nextFuseIdx = 0;
@@ -100,8 +122,8 @@ export class GameScene extends Phaser.Scene {
     this.playerCol = PLAYER_START.col;
     this.playerRow = PLAYER_START.row;
     this.playerDir = 'down';
-    this.walkFrame = 0;
     this.isMoving = false;
+    this.heldTouchDirection = undefined;
 
     this.fuseSequence = Phaser.Utils.Array.Shuffle(
       [...Array(FUSE_POSITIONS.length).keys()],
@@ -119,6 +141,7 @@ export class GameScene extends Phaser.Scene {
   create() {
     this.cameras.main.setBackgroundColor(PAL.void);
     this.cameras.main.fadeIn(400, 5, 5, 14);
+    this.input.addPointer(4);
 
     this.buildDungeon();
     this.buildFuses();
@@ -127,10 +150,24 @@ export class GameScene extends Phaser.Scene {
     this.buildDarkness();
     this.buildFogWisps();
     this.buildUI();
+    this.buildMobileControls();
 
     this.cursors = this.input.keyboard?.createCursorKeys();
+    this.wasdKeys = this.input.keyboard?.addKeys({
+      W: Phaser.Input.Keyboard.KeyCodes.W,
+      A: Phaser.Input.Keyboard.KeyCodes.A,
+      S: Phaser.Input.Keyboard.KeyCodes.S,
+      D: Phaser.Input.Keyboard.KeyCodes.D,
+      E: Phaser.Input.Keyboard.KeyCodes.E,
+    }) as GameScene['wasdKeys'];
 
     this.input.keyboard?.on('keydown-SPACE', () => {
+      sfx.resume();
+      this.tryActivateFuse();
+    });
+
+    this.input.keyboard?.on('keydown-E', () => {
+      sfx.resume();
       this.tryActivateFuse();
     });
 
@@ -153,24 +190,30 @@ export class GameScene extends Phaser.Scene {
 
   private handleMovementInput() {
     if (!this.gameActive) return;
-    if (!this.cursors) return;
     if (this.isMoving) return;
 
-    if (this.cursors.left.isDown) {
+    if (this.cursors?.left.isDown || this.wasdKeys?.A.isDown) {
       this.movePlayer(-1, 0, 'left');
-    } else if (this.cursors.right.isDown) {
+    } else if (this.cursors?.right.isDown || this.wasdKeys?.D.isDown) {
       this.movePlayer(1, 0, 'right');
-    } else if (this.cursors.up.isDown) {
+    } else if (this.cursors?.up.isDown || this.wasdKeys?.W.isDown) {
       this.movePlayer(0, -1, 'up');
-    } else if (this.cursors.down.isDown) {
+    } else if (this.cursors?.down.isDown || this.wasdKeys?.S.isDown) {
       this.movePlayer(0, 1, 'down');
+    } else if (this.heldTouchDirection) {
+      this.movePlayer(
+        this.heldTouchDirection.dx,
+        this.heldTouchDirection.dy,
+        this.heldTouchDirection.direction,
+      );
     }
   }
 
   private movePlayer(dx: number, dy: number, direction: CatDirection) {
-    if (!this.playerSprite || !this.playerGlow) return;
+    if (!this.playerSprite || !this.playerGlow || !this.playerShadow) return;
 
     this.playerDir = direction;
+    this.playerSprite.setFrame(getCatFrame(this.playerDir));
 
     const nextCol = this.playerCol + dx;
     const nextRow = this.playerRow + dy;
@@ -179,7 +222,7 @@ export class GameScene extends Phaser.Scene {
     if (isWallAt(nextCol, nextRow)) return;
 
     this.isMoving = true;
-
+    sfx.step();
     this.playerCol = nextCol;
     this.playerRow = nextRow;
 
@@ -188,14 +231,8 @@ export class GameScene extends Phaser.Scene {
       row: nextRow,
     });
 
-    this.walkFrame = (this.walkFrame + 1) % 3;
-
-    this.playerSprite.setTexture(
-      `cat_${this.catIndex}_${this.playerDir}_${this.walkFrame}`,
-    );
-
     this.tweens.add({
-      targets: [this.playerSprite, this.playerGlow],
+      targets: [this.playerSprite, this.playerGlow, this.playerShadow],
       x: target.x,
       y: target.y,
       duration: 140,
@@ -215,7 +252,7 @@ export class GameScene extends Phaser.Scene {
       this.time.delayedCall(delay, () => {
         const fuse = this.fuseSprites[fuseIndex];
         if (!fuse) return;
-
+        sfx.seq();
         fuse.numText.setText(String(sequencePosition + 1));
 
         this.tweens.add({
@@ -347,7 +384,6 @@ export class GameScene extends Phaser.Scene {
     const ctx = this.darknessTexture.context;
 
     ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
     ctx.globalCompositeOperation = 'source-over';
 
     const baseAlpha = Phaser.Math.Clamp(
@@ -372,13 +408,10 @@ export class GameScene extends Phaser.Scene {
 
     for (let col = 0; col < COLS; col++) {
       const x = col * TILE_SIZE;
-
       const wobble =
         Math.sin(time * 0.0015 + col * 0.9) * 18 +
         Math.sin(time * 0.0025 + col * 1.7) * 10;
-
       const height = Phaser.Math.Clamp(frontY + wobble, 0, GAME_HEIGHT);
-
       ctx.fillRect(x, 0, TILE_SIZE + 2, height);
     }
 
@@ -409,7 +442,6 @@ export class GameScene extends Phaser.Scene {
     });
 
     ctx.globalCompositeOperation = 'source-over';
-
     this.darknessTexture.refresh();
   }
 
@@ -439,10 +471,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleCorrectFuse(fuse: FuseSprite, fuseIndex: number) {
+    sfx.fuseOk();
     fuse.lit = true;
+
     this.litFuses.add(fuseIndex);
     this.nextFuseIdx++;
-
     this.darkLevel = Math.max(0, this.darkLevel - 0.12);
 
     fuse.spr.setTexture('fuseLit');
@@ -464,7 +497,6 @@ export class GameScene extends Phaser.Scene {
 
     this.spawnFuseParticles(fuse.spr.x, fuse.spr.y);
     this.updateFuseCount();
-
     this.showCenterText(`${this.nextFuseIdx}/${FUSE_POSITIONS.length}`, PAL.gold, 500);
 
     if (this.nextFuseIdx >= FUSE_POSITIONS.length) {
@@ -475,6 +507,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleWrongFuse() {
+    sfx.fuseFail();
     this.darkLevel = Math.min(1, this.darkLevel + 0.15);
 
     this.cameras.main.shake(300, 0.015);
@@ -493,7 +526,6 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.showCenterText('WRONG!', PAL.danger, 600);
-
     this.statusText?.setText('Wrong order!');
 
     this.time.delayedCall(1500, () => {
@@ -537,6 +569,7 @@ export class GameScene extends Phaser.Scene {
         this.timerText?.setText(`${minutes}:${seconds.toString().padStart(2, '0')}`);
 
         if (this.gameTime <= 30) {
+          sfx.tick();
           this.timerText?.setColor(PAL.danger);
 
           this.tweens.add({
@@ -559,12 +592,15 @@ export class GameScene extends Phaser.Scene {
 
     this.gameActive = false;
     this.gameWon = won;
+    this.heldTouchDirection = undefined;
 
     this.timerEvent?.remove(false);
 
     if (won) {
+      sfx.win();
       this.showCenterText('DUNGEON CLEARED!', PAL.gold, 1500);
     } else {
+      sfx.lose();
       this.showCenterText('DARKNESS WINS', PAL.danger, 1500);
     }
 
@@ -622,10 +658,8 @@ export class GameScene extends Phaser.Scene {
     for (let row = 0; row < ROWS; row++) {
       for (let col = 0; col < COLS; col++) {
         const isWall = DUNGEON[row][col] === 1;
-
         const x = col * TILE_SIZE + TILE_SIZE / 2;
         const y = row * TILE_SIZE + TILE_SIZE / 2;
-
         const tile = this.add.image(x, y, isWall ? 'wall' : 'floor');
         this.dungeonLayer.add(tile);
       }
@@ -655,7 +689,6 @@ export class GameScene extends Phaser.Scene {
       const y = pos.row * TILE_SIZE + TILE_SIZE / 2;
 
       const flame = this.add.circle(x, y - 4, 4, 0xff8822, 0.7);
-
       this.dungeonLayer?.add(flame);
 
       this.tweens.add({
@@ -679,7 +712,7 @@ export class GameScene extends Phaser.Scene {
   private buildFuses() {
     this.fuseSprites = [];
 
-    FUSE_POSITIONS.forEach((position:GridPosition, index) => {
+    FUSE_POSITIONS.forEach((position: GridPosition, index) => {
       const { x, y } = gridToWorld(position);
 
       const glowCircle = this.add
@@ -719,14 +752,21 @@ export class GameScene extends Phaser.Scene {
     });
 
     const cat = CATS[this.catIndex] ?? CATS[0];
+    const spriteKey = getCatSpriteKey(this.catIndex);
+
+    this.playerShadow = this.add
+      .ellipse(x, y + 11, 26, 9, 0x000000, 0.35)
+      .setDepth(8);
 
     this.playerGlow = this.add
       .circle(x, y, 6, hexToNum(cat.eye), 0.15)
       .setDepth(9);
 
     this.playerSprite = this.add
-      .image(x, y, `cat_${this.catIndex}_down_0`)
-      .setDepth(10);
+      .sprite(x, y, spriteKey, getCatFrame('down'))
+      .setDepth(10)
+      .setScale(CAT_SPRITE_DISPLAY_SCALE)
+      .setOrigin(0.5, 0.58);
   }
 
   private buildDust() {
@@ -807,5 +847,92 @@ export class GameScene extends Phaser.Scene {
     ]);
 
     this.updateFuseCount();
+  }
+
+  private buildMobileControls() {
+    const shouldShow = this.sys.game.device.input.touch;
+    this.mobileLayer = this.add.container(0, 0).setDepth(80).setVisible(shouldShow);
+
+    const left = this.createTouchButton(62, GAME_HEIGHT - 82, '◀');
+    const right = this.createTouchButton(154, GAME_HEIGHT - 82, '▶');
+    const up = this.createTouchButton(108, GAME_HEIGHT - 128, '▲');
+    const down = this.createTouchButton(108, GAME_HEIGHT - 36, '▼');
+    const act = this.createTouchButton(GAME_WIDTH - 70, GAME_HEIGHT - 70, 'ACT', 74, 56);
+
+    this.bindMoveButton(left, { dx: -1, dy: 0, direction: 'left' });
+    this.bindMoveButton(right, { dx: 1, dy: 0, direction: 'right' });
+    this.bindMoveButton(up, { dx: 0, dy: -1, direction: 'up' });
+    this.bindMoveButton(down, { dx: 0, dy: 1, direction: 'down' });
+
+    act.zone.on('pointerdown', () => {
+      sfx.resume();
+      this.tryActivateFuse();
+    });
+
+    this.input.on('pointerup', () => {
+      this.heldTouchDirection = undefined;
+    });
+
+    this.input.on('pointerupoutside', () => {
+      this.heldTouchDirection = undefined;
+    });
+  }
+
+  private createTouchButton(x: number, y: number, label: string, width = 58, height = 46) {
+    const bg = this.add
+      .rectangle(x, y, width, height, 0x2f294d, 0.62)
+      .setStrokeStyle(2, hexToNum(PAL.accent), 0.45);
+
+    const text = this.add
+      .text(x, y, label, {
+        fontFamily: 'Courier New, monospace',
+        fontSize: label === 'ACT' ? '13px' : '18px',
+        fontStyle: 'bold',
+        color: '#cfc8ff',
+      })
+      .setOrigin(0.5);
+
+    const zone = this.add
+      .zone(x, y, width, height)
+      .setInteractive({ useHandCursor: true });
+
+    this.mobileLayer?.add([bg, text, zone]);
+
+    zone.on('pointerover', () => {
+      bg.setFillStyle(0x4a3f73, 0.82);
+    });
+
+    zone.on('pointerout', () => {
+      bg.setFillStyle(0x2f294d, 0.62);
+      this.heldTouchDirection = undefined;
+    });
+
+    zone.on('pointerup', () => {
+      bg.setFillStyle(0x2f294d, 0.62);
+      this.heldTouchDirection = undefined;
+    });
+
+    zone.on('pointerdown', () => {
+      bg.setFillStyle(0x6b5ca0, 0.9);
+    });
+
+    return { bg, text, zone };
+  }
+
+  private bindMoveButton(
+    button: {
+      bg: Phaser.GameObjects.Rectangle;
+      text: Phaser.GameObjects.Text;
+      zone: Phaser.GameObjects.Zone;
+    },
+    move: MoveDirection,
+  ) {
+    button.zone.on('pointerdown', () => {
+      sfx.resume();
+      this.heldTouchDirection = move;
+      if (!this.isMoving) {
+        this.movePlayer(move.dx, move.dy, move.direction);
+      }
+    });
   }
 }
