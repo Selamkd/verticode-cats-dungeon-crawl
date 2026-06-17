@@ -3,6 +3,7 @@ import Phaser from 'phaser';
 import { hexToNum } from '../helpers/color';
 import type { CatDirection } from '../helpers/drawCatOnCanvas';
 import { CATS } from '../model/cats';
+import { sfx } from '../systems/SFX';
 import {
   gridToWorld,
   GAME_WIDTH,
@@ -131,7 +132,8 @@ export class GameScene extends Phaser.Scene {
     this.cursors = this.input.keyboard?.createCursorKeys();
 
     this.input.keyboard?.on('keydown-SPACE', () => {
-      this.tryActivateFuse();
+        sfx.resume();
+        this.tryActivateFuse();
     });
 
     this.time.delayedCall(600, () => {
@@ -179,7 +181,7 @@ export class GameScene extends Phaser.Scene {
     if (isWallAt(nextCol, nextRow)) return;
 
     this.isMoving = true;
-
+    sfx.step();
     this.playerCol = nextCol;
     this.playerRow = nextRow;
 
@@ -215,7 +217,7 @@ export class GameScene extends Phaser.Scene {
       this.time.delayedCall(delay, () => {
         const fuse = this.fuseSprites[fuseIndex];
         if (!fuse) return;
-
+        sfx.seq();
         fuse.numText.setText(String(sequencePosition + 1));
 
         this.tweens.add({
@@ -439,7 +441,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleCorrectFuse(fuse: FuseSprite, fuseIndex: number) {
+    sfx.fuseOk();
     fuse.lit = true;
+
     this.litFuses.add(fuseIndex);
     this.nextFuseIdx++;
 
@@ -475,6 +479,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleWrongFuse() {
+    sfx.fuseFail();
     this.darkLevel = Math.min(1, this.darkLevel + 0.15);
 
     this.cameras.main.shake(300, 0.015);
@@ -537,6 +542,7 @@ export class GameScene extends Phaser.Scene {
         this.timerText?.setText(`${minutes}:${seconds.toString().padStart(2, '0')}`);
 
         if (this.gameTime <= 30) {
+            sfx.tick();
           this.timerText?.setColor(PAL.danger);
 
           this.tweens.add({
@@ -563,8 +569,10 @@ export class GameScene extends Phaser.Scene {
     this.timerEvent?.remove(false);
 
     if (won) {
+      sfx.win();
       this.showCenterText('DUNGEON CLEARED!', PAL.gold, 1500);
     } else {
+      sfx.lose();
       this.showCenterText('DARKNESS WINS', PAL.danger, 1500);
     }
 

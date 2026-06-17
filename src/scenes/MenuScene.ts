@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-
+import { sfx } from '../systems/SFX';
 
 import { hexToNum } from '../helpers/color';
 import { CatDefinition, CATS } from '../model/cats';
@@ -39,11 +39,15 @@ export class MenuScene extends Phaser.Scene {
     this.selectCat(0);
 
     this.input.keyboard?.on('keydown-LEFT', () => {
+    sfx.resume();
+    sfx.select();
       this.selectCat(Math.max(0, this.selectedCat - 1));
     });
 
     this.input.keyboard?.on('keydown-RIGHT', () => {
-      this.selectCat(Math.min(CATS.length - 1, this.selectedCat + 1));
+        sfx.resume();
+        sfx.select();
+        this.selectCat(Math.min(CATS.length - 1, this.selectedCat + 1));
     });
 
     this.input.keyboard?.on('keydown-ENTER', () => {
@@ -157,8 +161,10 @@ export class MenuScene extends Phaser.Scene {
         .setOrigin(0.5);
 
       card.on('pointerdown', () => {
-        this.selectCat(index);
-      });
+       sfx.resume();
+       sfx.select();
+       this.selectCat(index);
+       });
 
       card.on('pointerover', () => {
         if (index !== this.selectedCat) {
@@ -302,6 +308,8 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private startGame() {
+     sfx.resume();
+     sfx.start()
     this.cameras.main.fadeOut(400, 5, 5, 14);
 
     this.time.delayedCall(400, () => {
