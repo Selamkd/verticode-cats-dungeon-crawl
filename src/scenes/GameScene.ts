@@ -1,11 +1,24 @@
 import Phaser from 'phaser';
 
-
 import { hexToNum } from '../helpers/color';
 import type { CatDirection } from '../helpers/drawCatOnCanvas';
 import { CATS } from '../model/cats';
-import { GridPosition, gridToWorld, GAME_WIDTH, GAME_HEIGHT, ROWS, COLS, TILE_SIZE } from '../model/const';
-import { PLAYER_START, FUSE_POSITIONS, isInsideDungeon, isWallAt, DUNGEON } from '../model/dungeon';
+import {
+  gridToWorld,
+  GAME_WIDTH,
+  GAME_HEIGHT,
+  ROWS,
+  COLS,
+  TILE_SIZE,
+} from '../model/const';
+import type { GridPosition } from '../model/const';
+import {
+  PLAYER_START,
+  FUSE_POSITIONS,
+  isInsideDungeon,
+  isWallAt,
+  DUNGEON,
+} from '../model/dungeon';
 import { PAL } from '../model/palette';
 
 type GameSceneData = {
@@ -61,6 +74,13 @@ export class GameScene extends Phaser.Scene {
   private statusText?: Phaser.GameObjects.Text;
   private centerText?: Phaser.GameObjects.Text;
 
+  private darknessTexture?: Phaser.Textures.CanvasTexture;
+  private darknessImage?: Phaser.GameObjects.Image;
+  private fogWisps: Phaser.GameObjects.Image[] = [];
+
+  private darkLevel = 0;
+  private darkPulse = 0;
+
   constructor() {
     super('Game');
   }
@@ -70,6 +90,12 @@ export class GameScene extends Phaser.Scene {
 
     this.fuseSprites = [];
     this.torches = [];
+    this.fogWisps = [];
+
+    this.darknessTexture = undefined;
+    this.darknessImage = undefined;
+    this.darkLevel = 0;
+    this.darkPulse = 0;
 
     this.playerCol = PLAYER_START.col;
     this.playerRow = PLAYER_START.row;
@@ -98,6 +124,8 @@ export class GameScene extends Phaser.Scene {
     this.buildFuses();
     this.buildPlayer();
     this.buildDust();
+    this.buildDarkness();
+    this.buildFogWisps();
     this.buildUI();
 
     this.cursors = this.input.keyboard?.createCursorKeys();
@@ -111,8 +139,15 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  update(time: number) {
+  update(time: number, delta: number) {
     this.handleMovementInput();
+
+    if (this.gameActive) {
+      this.darkLevel = Math.min(1, this.darkLevel + delta * 0.00003);
+      this.darkPulse = Math.sin(time * 0.002) * 0.03;
+    }
+
+    this.renderDarkness(time);
     this.updateLitFuseGlow(time);
   }
 
@@ -234,6 +269,150 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private buildDarkness() {
+    const textureKey = 'darknessCanvas';
+
+    if (this.textures.exists(textureKey)) {
+      this.textures.remove(textureKey);
+    }
+
+    this.darknessTexture = this.textures.createCanvas(
+      textureKey,
+      GAME_WIDTH,
+      GAME_HEIGHT,
+    ) as Phaser.Textures.CanvasTexture;
+
+    this.darknessImage = this.add
+      .image(0, 0, textureKey)
+      .setOrigin(0, 0)
+      .setDepth(50);
+  }
+
+  private buildFogWisps() {
+    for (let i = 0; i < 16; i++) {
+      const textureKey = Math.random() > 0.5 ? 'light120' : 'light200';
+
+      const wisp = this.add
+        .image(Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT, textureKey)
+        .setTint(0x050510)
+        .setAlpha(0.04 + Math.random() * 0.07)
+        .setScale(1.2 + Math.random() * 2.2, 0.35 + Math.random() * 0.8)
+        .setRotation(Math.random() * Math.PI)
+        .setDepth(51);
+
+      this.tweens.add({
+        targets: wisp,
+        x: wisp.x + Phaser.Math.Between(-80, 80),
+        y: wisp.y + Phaser.Math.Between(-40, 40),
+        rotation: wisp.rotation + Phaser.Math.FloatBetween(-0.4, 0.4),
+        alpha: 0.03 + Math.random() * 0.08,
+        duration: 5000 + Math.random() * 5000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        onRepeat: () => {
+          if (Math.random() > 0.65) {
+            wisp.x = Math.random() * GAME_WIDTH;
+            wisp.y = Math.random() * GAME_HEIGHT;
+          }
+        },
+      });
+
+      this.fogWisps.push(wisp);
+    }
+  }
+
+  private eraseLightHole(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number,
+  ) {
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+
+    gradient.addColorStop(0, 'rgba(255,255,255,1)');
+    gradient.addColorStop(0.35, 'rgba(255,255,255,0.9)');
+    gradient.addColorStop(0.65, 'rgba(255,255,255,0.35)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  private renderDarkness(time: number) {
+    if (!this.darknessTexture || !this.playerSprite) return;
+
+    const ctx = this.darknessTexture.context;
+
+    ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    ctx.globalCompositeOperation = 'source-over';
+
+    const baseAlpha = Phaser.Math.Clamp(
+      0.62 + this.darkLevel * 0.22 + this.darkPulse,
+      0,
+      0.88,
+    );
+
+    ctx.fillStyle = `rgba(5, 5, 16, ${baseAlpha})`;
+    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    const elapsed = (120 - this.gameTime) / 120;
+    const spread = Phaser.Math.Clamp(
+      0.14 + elapsed * 0.86 + this.darkLevel * 0.45,
+      0,
+      1,
+    );
+
+    const frontY = GAME_HEIGHT * spread;
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.92)';
+
+    for (let col = 0; col < COLS; col++) {
+      const x = col * TILE_SIZE;
+
+      const wobble =
+        Math.sin(time * 0.0015 + col * 0.9) * 18 +
+        Math.sin(time * 0.0025 + col * 1.7) * 10;
+
+      const height = Phaser.Math.Clamp(frontY + wobble, 0, GAME_HEIGHT);
+
+      ctx.fillRect(x, 0, TILE_SIZE + 2, height);
+    }
+
+    ctx.globalCompositeOperation = 'destination-out';
+
+    const playerLightRadius = Math.max(45, 100 - this.darkLevel * 45);
+
+    this.eraseLightHole(
+      ctx,
+      this.playerSprite.x,
+      this.playerSprite.y,
+      playerLightRadius,
+    );
+
+    this.fuseSprites.forEach((fuse) => {
+      if (!this.gameActive) {
+        this.eraseLightHole(ctx, fuse.spr.x, fuse.spr.y, 42);
+        return;
+      }
+
+      if (fuse.lit) {
+        this.eraseLightHole(ctx, fuse.spr.x, fuse.spr.y, 64);
+      }
+    });
+
+    this.torches.forEach((torch) => {
+      this.eraseLightHole(ctx, torch.x, torch.y, 42);
+    });
+
+    ctx.globalCompositeOperation = 'source-over';
+
+    this.darknessTexture.refresh();
+  }
+
   private findAdjacentUnlitFuse():
     | {
         fuse: FuseSprite;
@@ -263,6 +442,8 @@ export class GameScene extends Phaser.Scene {
     fuse.lit = true;
     this.litFuses.add(fuseIndex);
     this.nextFuseIdx++;
+
+    this.darkLevel = Math.max(0, this.darkLevel - 0.12);
 
     fuse.spr.setTexture('fuseLit');
 
@@ -294,6 +475,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleWrongFuse() {
+    this.darkLevel = Math.min(1, this.darkLevel + 0.15);
+
     this.cameras.main.shake(300, 0.015);
 
     const flash = this.add
@@ -496,7 +679,7 @@ export class GameScene extends Phaser.Scene {
   private buildFuses() {
     this.fuseSprites = [];
 
-    FUSE_POSITIONS.forEach((position:GridPosition, index:number) => {
+    FUSE_POSITIONS.forEach((position:GridPosition, index) => {
       const { x, y } = gridToWorld(position);
 
       const glowCircle = this.add
