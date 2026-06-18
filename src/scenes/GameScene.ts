@@ -58,6 +58,7 @@ export class GameScene extends Phaser.Scene {
   private dungeonLayer?: Phaser.GameObjects.Container;
   private uiContainer?: Phaser.GameObjects.Container;
   private mobileLayer?: Phaser.GameObjects.Container;
+  private instructionsLayer?: Phaser.GameObjects.Container;
 
   private fuseSprites: FuseSprite[] = [];
   private torches: Torch[] = [];
@@ -89,6 +90,7 @@ export class GameScene extends Phaser.Scene {
   private gameTime = 120;
   private gameActive = false;
   private gameWon = false;
+  private awaitingStart = false;
   private timerEvent?: Phaser.Time.TimerEvent;
 
   private timerText?: Phaser.GameObjects.Text;
@@ -135,6 +137,7 @@ export class GameScene extends Phaser.Scene {
     this.gameTime = 120;
     this.gameActive = false;
     this.gameWon = false;
+    this.awaitingStart = false;
     this.timerEvent = undefined;
   }
 
@@ -163,6 +166,10 @@ export class GameScene extends Phaser.Scene {
 
     this.input.keyboard?.on('keydown-SPACE', () => {
       sfx.resume();
+      if (this.awaitingStart) {
+        this.beginGame();
+        return;
+      }
       this.tryActivateFuse();
     });
 
@@ -171,9 +178,14 @@ export class GameScene extends Phaser.Scene {
       this.tryActivateFuse();
     });
 
-    this.time.delayedCall(600, () => {
-      this.showSequence();
+    this.input.keyboard?.on('keydown-ENTER', () => {
+      sfx.resume();
+      if (this.awaitingStart) {
+        this.beginGame();
+      }
     });
+
+    this.showInstructions();
   }
 
   update(time: number, delta: number) {
@@ -186,6 +198,131 @@ export class GameScene extends Phaser.Scene {
 
     this.renderDarkness(time);
     this.updateLitFuseGlow(time);
+  }
+
+  private showInstructions() {
+    this.awaitingStart = true;
+
+    const layer = this.add.container(0, 0).setDepth(90);
+
+    const backdrop = this.add
+      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05050e, 0.82)
+      .setInteractive();
+
+    const panel = this.add
+      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 470, 380, 0x0c0c18, 0.97)
+      .setStrokeStyle(2, hexToNum(PAL.accent), 0.5);
+
+    const title = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 150, 'THE DARKNESS IS SPREADING', {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '20px',
+        fontStyle: 'bold',
+        color: PAL.gold,
+        align: 'center',
+      })
+      .setOrigin(0.5);
+
+    const goal = this.add
+      .text(
+        GAME_WIDTH / 2,
+        GAME_HEIGHT / 2 - 96,
+        'Smoke is pouring in from every corner of the dungeon.\nMemorise the order the fuses light up, then relight\nthem in that exact order to hold back the dark.',
+        {
+          fontFamily: 'Georgia, serif',
+          fontSize: '13px',
+          fontStyle: 'italic',
+          color: '#b8b0ca',
+          align: 'center',
+          lineSpacing: 5,
+        },
+      )
+      .setOrigin(0.5);
+
+    const controls = this.add
+      .text(
+        GAME_WIDTH / 2,
+        GAME_HEIGHT / 2 - 6,
+        'MOVE   Arrow Keys  /  W A S D\nLIGHT FUSE   Space  /  E   (stand next to it)\nMOBILE   On-screen pad  +  ACT button',
+        {
+          fontFamily: 'Courier New, monospace',
+          fontSize: '13px',
+          color: PAL.ui,
+          align: 'center',
+          lineSpacing: 8,
+        },
+      )
+      .setOrigin(0.5);
+
+    const warn = this.add
+      .text(
+        GAME_WIDTH / 2,
+        GAME_HEIGHT / 2 + 78,
+        'Each correct fuse beats the darkness back.\nA wrong fuse feeds it. You have 2 minutes.',
+        {
+          fontFamily: 'Georgia, serif',
+          fontSize: '12px',
+          fontStyle: 'italic',
+          color: '#7a7290',
+          align: 'center',
+          lineSpacing: 4,
+        },
+      )
+      .setOrigin(0.5);
+
+    const beginBg = this.add
+      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 142, 200, 46, hexToNum(PAL.accent), 0.92)
+      .setStrokeStyle(2, 0xffffff, 0.25)
+      .setInteractive({ useHandCursor: true });
+
+    const beginText = this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 142, 'BEGIN  ▸', {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '14px',
+        fontStyle: 'bold',
+        color: '#fff',
+      })
+      .setOrigin(0.5);
+
+    this.tweens.add({
+      targets: beginBg,
+      scaleX: 1.04,
+      scaleY: 1.04,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    layer.add([backdrop, panel, title, goal, controls, warn, beginBg, beginText]);
+
+    backdrop.on('pointerdown', () => this.beginGame());
+    beginBg.on('pointerdown', () => this.beginGame());
+
+    this.instructionsLayer = layer;
+  }
+
+  private beginGame() {
+    if (!this.awaitingStart) return;
+    this.awaitingStart = false;
+    sfx.resume();
+
+    const layer = this.instructionsLayer;
+    if (layer) {
+      this.tweens.add({
+        targets: layer,
+        alpha: 0,
+        duration: 300,
+        onComplete: () => {
+          layer.destroy();
+          this.instructionsLayer = undefined;
+        },
+      });
+    }
+
+    this.time.delayedCall(320, () => {
+      this.showSequence();
+    });
   }
 
   private handleMovementInput() {
@@ -295,15 +432,23 @@ export class GameScene extends Phaser.Scene {
     if (!this.gameActive) return;
 
     const targetFuseIndex = this.fuseSequence[this.nextFuseIdx];
-    const adjacentFuse = this.findAdjacentUnlitFuse();
+    const targetFuse = this.fuseSprites[targetFuseIndex];
 
+    if (targetFuse && !targetFuse.lit && this.isAdjacentToPlayer(targetFuse.pos)) {
+      this.handleCorrectFuse(targetFuse, targetFuseIndex);
+      return;
+    }
+
+    const adjacentFuse = this.findAdjacentUnlitFuse();
     if (!adjacentFuse) return;
 
-    if (adjacentFuse.index === targetFuseIndex) {
-      this.handleCorrectFuse(adjacentFuse.fuse, adjacentFuse.index);
-    } else {
-      this.handleWrongFuse();
-    }
+    this.handleWrongFuse();
+  }
+
+  private isAdjacentToPlayer(pos: GridPosition): boolean {
+    const dx = Math.abs(pos.col - this.playerCol);
+    const dy = Math.abs(pos.row - this.playerRow);
+    return dx + dy <= 1;
   }
 
   private buildDarkness() {
@@ -319,7 +464,7 @@ export class GameScene extends Phaser.Scene {
       GAME_HEIGHT,
     ) as Phaser.Textures.CanvasTexture;
 
-
+    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, textureKey).setDepth(50);
   }
 
   private buildFogWisps() {
@@ -384,37 +529,26 @@ export class GameScene extends Phaser.Scene {
     ctx.globalCompositeOperation = 'source-over';
 
     const baseAlpha = Phaser.Math.Clamp(
-      0.62 + this.darkLevel * 0.22 + this.darkPulse,
+      0.5 + this.darkLevel * 0.22 + this.darkPulse,
       0,
-      0.88,
+      0.82,
     );
 
     ctx.fillStyle = `rgba(5, 5, 16, ${baseAlpha})`;
     ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
     const elapsed = (120 - this.gameTime) / 120;
-    const spread = Phaser.Math.Clamp(
-      0.14 + elapsed * 0.86 + this.darkLevel * 0.45,
+    const creep = Phaser.Math.Clamp(
+      0.05 + elapsed * 0.92 + this.darkLevel * 0.35,
       0,
       1,
     );
 
-    const frontY = GAME_HEIGHT * spread;
-
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.92)';
-
-    for (let col = 0; col < COLS; col++) {
-      const x = col * TILE_SIZE;
-      const wobble =
-        Math.sin(time * 0.0015 + col * 0.9) * 18 +
-        Math.sin(time * 0.0025 + col * 1.7) * 10;
-      const height = Phaser.Math.Clamp(frontY + wobble, 0, GAME_HEIGHT);
-      ctx.fillRect(x, 0, TILE_SIZE + 2, height);
-    }
+    this.paintEncroachingDark(ctx, time, creep);
 
     ctx.globalCompositeOperation = 'destination-out';
 
-    const playerLightRadius = Math.max(45, 100 - this.darkLevel * 45);
+    const playerLightRadius = Math.max(58, 120 - this.darkLevel * 48);
 
     this.eraseLightHole(
       ctx,
@@ -425,21 +559,83 @@ export class GameScene extends Phaser.Scene {
 
     this.fuseSprites.forEach((fuse) => {
       if (!this.gameActive) {
-        this.eraseLightHole(ctx, fuse.spr.x, fuse.spr.y, 42);
+        this.eraseLightHole(ctx, fuse.spr.x, fuse.spr.y, 52);
         return;
       }
 
       if (fuse.lit) {
-        this.eraseLightHole(ctx, fuse.spr.x, fuse.spr.y, 64);
+        this.eraseLightHole(ctx, fuse.spr.x, fuse.spr.y, 88);
       }
     });
 
     this.torches.forEach((torch) => {
-      this.eraseLightHole(ctx, torch.x, torch.y, 42);
+      this.eraseLightHole(ctx, torch.x, torch.y, 46);
     });
 
     ctx.globalCompositeOperation = 'source-over';
     this.darknessTexture.refresh();
+  }
+
+  private paintEncroachingDark(
+    ctx: CanvasRenderingContext2D,
+    time: number,
+    creep: number,
+  ) {
+    const depthV = GAME_HEIGHT * 0.55 * creep;
+    const depthH = GAME_WIDTH * 0.55 * creep;
+
+    const hazeV = Math.min(GAME_HEIGHT, depthV * 1.6);
+    const hazeH = Math.min(GAME_WIDTH, depthH * 1.6);
+
+    const haze = (
+      x0: number,
+      y0: number,
+      x1: number,
+      y1: number,
+      rx: number,
+      ry: number,
+      rw: number,
+      rh: number,
+    ) => {
+      const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
+      gradient.addColorStop(0, 'rgba(3, 3, 10, 0.92)');
+      gradient.addColorStop(1, 'rgba(3, 3, 10, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(rx, ry, rw, rh);
+    };
+
+    haze(0, 0, 0, hazeV, 0, 0, GAME_WIDTH, hazeV);
+    haze(0, GAME_HEIGHT, 0, GAME_HEIGHT - hazeV, 0, GAME_HEIGHT - hazeV, GAME_WIDTH, hazeV);
+    haze(0, 0, hazeH, 0, 0, 0, hazeH, GAME_HEIGHT);
+    haze(GAME_WIDTH, 0, GAME_WIDTH - hazeH, 0, GAME_WIDTH - hazeH, 0, hazeH, GAME_HEIGHT);
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+
+    for (let col = 0; col < COLS; col++) {
+      const x = col * TILE_SIZE;
+      const wobble =
+        Math.sin(time * 0.0015 + col * 0.9) * 16 +
+        Math.sin(time * 0.0027 + col * 1.7) * 9;
+
+      const topHeight = Phaser.Math.Clamp(depthV + wobble, 0, GAME_HEIGHT);
+      ctx.fillRect(x, 0, TILE_SIZE + 2, topHeight);
+
+      const bottomHeight = Phaser.Math.Clamp(depthV - wobble, 0, GAME_HEIGHT);
+      ctx.fillRect(x, GAME_HEIGHT - bottomHeight, TILE_SIZE + 2, bottomHeight);
+    }
+
+    for (let row = 0; row < ROWS; row++) {
+      const y = row * TILE_SIZE;
+      const wobble =
+        Math.sin(time * 0.0016 + row * 1.1) * 16 +
+        Math.sin(time * 0.0031 + row * 1.9) * 9;
+
+      const leftWidth = Phaser.Math.Clamp(depthH + wobble, 0, GAME_WIDTH);
+      ctx.fillRect(0, y, leftWidth, TILE_SIZE + 2);
+
+      const rightWidth = Phaser.Math.Clamp(depthH - wobble, 0, GAME_WIDTH);
+      ctx.fillRect(GAME_WIDTH - rightWidth, y, rightWidth, TILE_SIZE + 2);
+    }
   }
 
   private findAdjacentUnlitFuse():
@@ -453,10 +649,7 @@ export class GameScene extends Phaser.Scene {
 
       if (!fuse || fuse.lit) continue;
 
-      const dx = Math.abs(fuse.pos.col - this.playerCol);
-      const dy = Math.abs(fuse.pos.row - this.playerRow);
-
-      if (dx + dy <= 1) {
+      if (this.isAdjacentToPlayer(fuse.pos)) {
         return {
           fuse,
           index,
@@ -473,21 +666,21 @@ export class GameScene extends Phaser.Scene {
 
     this.litFuses.add(fuseIndex);
     this.nextFuseIdx++;
-    this.darkLevel = Math.max(0, this.darkLevel - 0.12);
+    this.darkLevel = Math.max(0, this.darkLevel - 0.16);
 
     fuse.spr.setTexture('fuseLit');
 
     this.tweens.add({
       targets: fuse.glowCircle,
-      radius: 60,
-      alpha: 0.3,
+      radius: 80,
+      alpha: 0.4,
       duration: 400,
       ease: 'Quad.easeOut',
     });
 
     this.tweens.add({
       targets: fuse.spr,
-      scale: 1.4,
+      scale: 1.5,
       duration: 150,
       yoyo: true,
     });
@@ -644,8 +837,8 @@ export class GameScene extends Phaser.Scene {
     this.fuseSprites.forEach((fuse) => {
       if (!fuse.lit) return;
 
-      fuse.glowCircle.setRadius(55 + Math.sin(time * 0.003) * 5);
-      fuse.glowCircle.setAlpha(0.15 + Math.sin(time * 0.004) * 0.05);
+      fuse.glowCircle.setRadius(70 + Math.sin(time * 0.003) * 6);
+      fuse.glowCircle.setAlpha(0.2 + Math.sin(time * 0.004) * 0.06);
     });
   }
 
@@ -667,16 +860,16 @@ export class GameScene extends Phaser.Scene {
 
   private buildTorches() {
     const torchPositions = [
-      { col: 5, row: 1 },
-      { col: 14, row: 1 },
-      { col: 0, row: 5 },
-      { col: 19, row: 5 },
-      { col: 0, row: 10 },
-      { col: 19, row: 10 },
-      { col: 5, row: 13 },
-      { col: 14, row: 13 },
-      { col: 9, row: 7 },
-      { col: 10, row: 7 },
+      { col: 5, row: 4 },
+      { col: 12, row: 4 },
+      { col: 5, row: 10 },
+      { col: 12, row: 10 },
+      { col: 8, row: 6 },
+      { col: 8, row: 8 },
+      { col: 9, row: 2 },
+      { col: 10, row: 12 },
+      { col: 6, row: 1 },
+      { col: 13, row: 13 },
     ];
 
     torchPositions.forEach((pos) => {
@@ -719,9 +912,9 @@ export class GameScene extends Phaser.Scene {
       const spr = this.add.image(x, y, 'fuseOff').setDepth(5);
 
       const numText = this.add
-        .text(x, y - 22, '', {
+        .text(x, y - 24, '', {
           fontFamily: 'Courier New, monospace',
-          fontSize: '16px',
+          fontSize: '18px',
           fontStyle: 'bold',
           color: PAL.gold,
           stroke: '#000',
