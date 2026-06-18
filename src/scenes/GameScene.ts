@@ -44,6 +44,10 @@ type Torch = {
   x: number;
   y: number;
   radius: number;
+  lit: boolean;
+  ownerFuse: number;
+  flame: Phaser.GameObjects.Arc;
+  glow: Phaser.GameObjects.Arc;
 };
 
 type MoveDirection = {
@@ -368,13 +372,40 @@ export class GameScene extends Phaser.Scene {
       row: nextRow,
     });
 
-    this.tweens.add({
-      targets: [this.playerSprite, this.playerGlow, this.playerShadow],
-      x: target.x,
-      y: target.y,
-      duration: 140,
-      ease: 'Quad.easeOut',
+    const sprite = this.playerSprite;
+    const glow = this.playerGlow;
+    const shadow = this.playerShadow;
+    const fromX = sprite.x;
+    const fromY = sprite.y;
+
+    this.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: 150,
+      ease: 'Sine.easeInOut',
+      onUpdate: (tween) => {
+        const t = tween.getValue();
+        if(!t) return;
+        const x = Phaser.Math.Linear(fromX, target.x, t);
+        const y = Phaser.Math.Linear(fromY, target.y, t);
+        const hop = Math.sin(t * Math.PI);
+
+        sprite.setPosition(x, y - hop * 9);
+        sprite.setScale(
+          CAT_SPRITE_DISPLAY_SCALE * (1 - hop * 0.05),
+          CAT_SPRITE_DISPLAY_SCALE * (1 + hop * 0.08),
+        );
+
+        glow.setPosition(x, y);
+        shadow.setPosition(x, y + 11);
+        shadow.setScale(1 - hop * 0.3);
+      },
       onComplete: () => {
+        sprite.setPosition(target.x, target.y);
+        sprite.setScale(CAT_SPRITE_DISPLAY_SCALE);
+        glow.setPosition(target.x, target.y);
+        shadow.setPosition(target.x, target.y + 11);
+        shadow.setScale(1);
         this.isMoving = false;
       },
     });
@@ -569,7 +600,9 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.torches.forEach((torch) => {
-      this.eraseLightHole(ctx, torch.x, torch.y, 46);
+      if (torch.lit) {
+        this.eraseLightHole(ctx, torch.x, torch.y, torch.radius);
+      }
     });
 
     ctx.globalCompositeOperation = 'source-over';
@@ -686,6 +719,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.spawnFuseParticles(fuse.spr.x, fuse.spr.y);
+    this.igniteSection(fuseIndex);
     this.updateFuseCount();
     this.showCenterText(`${this.nextFuseIdx}/${FUSE_POSITIONS.length}`, PAL.gold, 500);
 
@@ -859,44 +893,99 @@ export class GameScene extends Phaser.Scene {
   }
 
   private buildTorches() {
-    const torchPositions = [
-      { col: 5, row: 4 },
-      { col: 12, row: 4 },
-      { col: 5, row: 10 },
-      { col: 12, row: 10 },
-      { col: 8, row: 6 },
-      { col: 8, row: 8 },
-      { col: 9, row: 2 },
-      { col: 10, row: 12 },
-      { col: 6, row: 1 },
-      { col: 13, row: 13 },
+    const torchSections = [
+      { col: 2, row: 0, owner: 0 },
+      { col: 2, row: 2, owner: 0 },
+      { col: 17, row: 0, owner: 1 },
+      { col: 17, row: 2, owner: 1 },
+      { col: 1, row: 6, owner: 2 },
+      { col: 0, row: 7, owner: 2 },
+      { col: 18, row: 6, owner: 3 },
+      { col: 19, row: 7, owner: 3 },
+      { col: 2, row: 12, owner: 4 },
+      { col: 2, row: 14, owner: 4 },
+      { col: 17, row: 12, owner: 5 },
+      { col: 17, row: 14, owner: 5 },
     ];
 
-    torchPositions.forEach((pos) => {
+    torchSections.forEach((pos) => {
       if (DUNGEON[pos.row]?.[pos.col] !== 1) return;
 
       const x = pos.col * TILE_SIZE + TILE_SIZE / 2;
       const y = pos.row * TILE_SIZE + TILE_SIZE / 2;
 
-      const flame = this.add.circle(x, y - 4, 4, 0xff8822, 0.7);
-      this.dungeonLayer?.add(flame);
+      const glow = this.add.circle(x, y, 44, 0xff8a2a, 0).setDepth(3);
+      const flame = this.add.circle(x, y - 4, 3, 0x4a2f16, 0.5).setDepth(4);
+
+      this.dungeonLayer?.add([glow, flame]);
 
       this.tweens.add({
         targets: flame,
-        alpha: 0.3,
-        scaleX: 0.7,
-        scaleY: 1.3,
-        duration: 300 + Math.random() * 200,
+        alpha: 0.28,
+        duration: 1200 + Math.random() * 600,
         yoyo: true,
         repeat: -1,
+        ease: 'Sine.easeInOut',
       });
 
       this.torches.push({
         x,
         y,
-        radius: 50,
+        radius: 72,
+        lit: false,
+        ownerFuse: pos.owner,
+        flame,
+        glow,
       });
     });
+  }
+
+  private igniteSection(fuseIndex: number) {
+    const sectionTorches = this.torches.filter(
+      (torch) => torch.ownerFuse === fuseIndex && !torch.lit,
+    );
+
+    sectionTorches.forEach((torch, i) => {
+      this.time.delayedCall(130 * i, () => {
+        this.igniteTorch(torch);
+      });
+    });
+  }
+
+  private igniteTorch(torch: Torch) {
+    if (torch.lit) return;
+    torch.lit = true;
+
+    this.tweens.killTweensOf(torch.flame);
+    torch.flame.setFillStyle(0xff9a33).setAlpha(0.9);
+
+    this.tweens.add({
+      targets: torch.flame,
+      radius: 6,
+      duration: 220,
+      ease: 'Back.easeOut',
+      onComplete: () => {
+        this.tweens.add({
+          targets: torch.flame,
+          alpha: 0.55,
+          scaleX: 0.75,
+          scaleY: 1.35,
+          duration: 260 + Math.random() * 160,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      },
+    });
+
+    this.tweens.add({
+      targets: torch.glow,
+      alpha: 0.28,
+      duration: 450,
+      ease: 'Quad.easeOut',
+    });
+
+    this.spawnFuseParticles(torch.x, torch.y - 4);
   }
 
   private buildFuses() {

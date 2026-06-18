@@ -27,6 +27,7 @@ export class MenuScene extends Phaser.Scene {
   private detailStoryText?: Phaser.GameObjects.Text;
   private detailAbilityText?: Phaser.GameObjects.Text;
   private selectedPreview?: Phaser.GameObjects.Sprite;
+  private previewBaseY = 370;
 
   constructor() {
     super('Menu');
@@ -204,9 +205,18 @@ export class MenuScene extends Phaser.Scene {
       .setStrokeStyle(1, hexToNum(PAL.accent), 0.25);
 
     this.selectedPreview = this.add
-      .sprite(GAME_WIDTH / 2 - 260, 370, getCatSpriteKey(0), 0)
+      .sprite(GAME_WIDTH / 2 - 260, this.previewBaseY, getCatSpriteKey(0), 0)
       .setScale(1.15)
       .setOrigin(0.5, 0.58);
+
+    this.tweens.add({
+      targets: this.selectedPreview,
+      y: this.previewBaseY + 7,
+      duration: 1400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
 
     this.detailNameText = this.add
       .text(GAME_WIDTH / 2 + 30, 324, '', {
@@ -318,6 +328,19 @@ export class MenuScene extends Phaser.Scene {
 
     this.selectedPreview?.setTexture(getCatSpriteKey(this.selectedCat));
     this.selectedPreview?.setFrame(0);
+
+    if (this.selectedPreview) {
+      this.selectedPreview.setScale(1.15);
+      this.tweens.add({
+        targets: this.selectedPreview,
+        scaleX: 1.32,
+        scaleY: 1.32,
+        duration: 160,
+        yoyo: true,
+        ease: 'Back.easeOut',
+      });
+    }
+
     this.detailNameText?.setText(`${cat.name}  ·  ${cat.desc}`);
     this.detailStoryText?.setText(cat.backstory);
     this.detailAbilityText?.setText(

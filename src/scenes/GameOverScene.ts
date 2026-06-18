@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+
 import {
   CAT_OVER_DISPLAY_SCALE,
   getCatFrame,
@@ -43,10 +44,33 @@ export class GameOverScene extends Phaser.Scene {
     const spriteKey = getCatSpriteKey(this.result.catIndex);
     const frame = this.result.won ? getCatFrame('down') : getCatFrame('up');
 
-    this.add
-      .sprite(GAME_WIDTH / 2, 130, spriteKey, frame)
+    const catY = 130;
+    const cat = this.add
+      .sprite(GAME_WIDTH / 2, catY, spriteKey, frame)
       .setScale(CAT_OVER_DISPLAY_SCALE)
       .setOrigin(0.5, 0.58);
+
+    if (this.result.won) {
+      cat.setY(catY + 14);
+      this.tweens.add({
+        targets: cat,
+        y: catY - 14,
+        duration: 380,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    } else {
+      cat.setAlpha(0.82);
+      this.tweens.add({
+        targets: cat,
+        angle: { from: -5, to: 5 },
+        duration: 2400,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
 
     this.add
       .text(GAME_WIDTH / 2, 230, this.result.won ? 'DUNGEON CLEARED!' : 'CONSUMED BY DARKNESS', {
@@ -89,6 +113,16 @@ export class GameOverScene extends Phaser.Scene {
         color: PAL.accent,
       })
       .setOrigin(0.5);
+
+    this.tweens.add({
+      targets: retryButton,
+      scaleX: 1.04,
+      scaleY: 1.04,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
 
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT - 58, 'Press ENTER or tap to retry', {
