@@ -46,7 +46,8 @@ type Torch = {
   radius: number;
   lit: boolean;
   ownerFuse: number;
-  flame: Phaser.GameObjects.Arc;
+  flame: Phaser.GameObjects.Container;
+  flameLayers: Phaser.GameObjects.Ellipse[];
   glow: Phaser.GameObjects.Arc;
 };
 
@@ -215,14 +216,14 @@ export class GameScene extends Phaser.Scene {
 
     const panel = this.add
       .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 470, 380, 0x0c0c18, 0.97)
-      .setStrokeStyle(2, hexToNum(PAL.accent), 0.5);
+      .setStrokeStyle(2, hexToNum(PAL.wallMid), 0.5);
 
     const title = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 150, 'THE DARKNESS IS SPREADING', {
+      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 150, 'THE DARKNESS IS SPREADING!!!', {
         fontFamily: 'Courier New, monospace',
         fontSize: '20px',
         fontStyle: 'bold',
-        color: PAL.gold,
+        color: PAL.wallMid,
         align: 'center',
       })
       .setOrigin(0.5);
@@ -251,7 +252,7 @@ export class GameScene extends Phaser.Scene {
         {
           fontFamily: 'Courier New, monospace',
           fontSize: '13px',
-          color: PAL.ui,
+          color: PAL.fuseLit,
           align: 'center',
           lineSpacing: 8,
         },
@@ -267,7 +268,7 @@ export class GameScene extends Phaser.Scene {
           fontFamily: 'Georgia, serif',
           fontSize: '12px',
           fontStyle: 'italic',
-          color: '#7a7290',
+          color: PAL.ui,
           align: 'center',
           lineSpacing: 4,
         },
@@ -385,7 +386,7 @@ export class GameScene extends Phaser.Scene {
       ease: 'Sine.easeInOut',
       onUpdate: (tween) => {
         const t = tween.getValue();
-        if(!t) return;
+        if(!t)return 
         const x = Phaser.Math.Linear(fromX, target.x, t);
         const y = Phaser.Math.Linear(fromY, target.y, t);
         const hop = Math.sin(t * Math.PI);
@@ -914,19 +915,23 @@ export class GameScene extends Phaser.Scene {
       const x = pos.col * TILE_SIZE + TILE_SIZE / 2;
       const y = pos.row * TILE_SIZE + TILE_SIZE / 2;
 
-      const glow = this.add.circle(x, y, 44, 0xff8a2a, 0).setDepth(3);
-      const flame = this.add.circle(x, y - 4, 3, 0x4a2f16, 0.5).setDepth(4);
+      const glow = this.add.circle(x, y, 46, 0xff8a2a, 0).setDepth(3);
 
-      this.dungeonLayer?.add([glow, flame]);
+      const stem = this.add.rectangle(x, y + 9, 4, 8, 0x1d140a).setDepth(4);
+      const cup = this.add
+        .rectangle(x, y + 5, 12, 5, 0x2a1d10)
+        .setStrokeStyle(1, 0x6b4a28, 0.8)
+        .setDepth(4);
 
-      this.tweens.add({
-        targets: flame,
-        alpha: 0.28,
-        duration: 1200 + Math.random() * 600,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+      const flame = this.add.container(x, y + 4).setDepth(5).setAlpha(0);
+      const f1 = this.add.ellipse(0, 0, 13, 22, 0xff4d16).setOrigin(0.5, 1);
+      const f2 = this.add.ellipse(0, 0, 9, 16, 0xff8a2a).setOrigin(0.5, 1);
+      const f3 = this.add.ellipse(0, 0, 5, 10, 0xffd25a).setOrigin(0.5, 1);
+      const f4 = this.add.ellipse(0, -1, 2.5, 5, 0xfff2c2).setOrigin(0.5, 1);
+      const flameLayers = [f1, f2, f3, f4];
+      flame.add(flameLayers);
+
+      this.dungeonLayer?.add([glow, stem, cup, flame]);
 
       this.torches.push({
         x,
@@ -935,6 +940,7 @@ export class GameScene extends Phaser.Scene {
         lit: false,
         ownerFuse: pos.owner,
         flame,
+        flameLayers,
         glow,
       });
     });
@@ -956,36 +962,43 @@ export class GameScene extends Phaser.Scene {
     if (torch.lit) return;
     torch.lit = true;
 
-    this.tweens.killTweensOf(torch.flame);
-    torch.flame.setFillStyle(0xff9a33).setAlpha(0.9);
-
-    this.tweens.add({
-      targets: torch.flame,
-      radius: 6,
-      duration: 220,
-      ease: 'Back.easeOut',
-      onComplete: () => {
-        this.tweens.add({
-          targets: torch.flame,
-          alpha: 0.55,
-          scaleX: 0.75,
-          scaleY: 1.35,
-          duration: 260 + Math.random() * 160,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut',
-        });
-      },
-    });
-
     this.tweens.add({
       targets: torch.glow,
-      alpha: 0.28,
+      alpha: 0.3,
       duration: 450,
       ease: 'Quad.easeOut',
     });
 
-    this.spawnFuseParticles(torch.x, torch.y - 4);
+    torch.flame.setAlpha(1).setScale(0.35);
+    this.tweens.add({
+      targets: torch.flame,
+      scale: 1,
+      duration: 240,
+      ease: 'Back.easeOut',
+    });
+
+    torch.flameLayers.forEach((layer, i) => {
+      this.tweens.add({
+        targets: layer,
+        scaleY: 0.82 + Math.random() * 0.4,
+        duration: 130 + Math.random() * 130,
+        delay: i * 35,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+
+      this.tweens.add({
+        targets: layer,
+        x: Phaser.Math.FloatBetween(-1.6, 1.6),
+        duration: 200 + Math.random() * 160,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    });
+
+    this.spawnFuseParticles(torch.x, torch.y - 6);
   }
 
   private buildFuses() {

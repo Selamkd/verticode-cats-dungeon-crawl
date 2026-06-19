@@ -73,7 +73,7 @@ export class GameOverScene extends Phaser.Scene {
     }
 
     this.add
-      .text(GAME_WIDTH / 2, 230, this.result.won ? 'DUNGEON CLEARED!' : 'CONSUMED BY DARKNESS', {
+      .text(GAME_WIDTH / 2, 230, this.result.won ? 'DUNGEON CLEARED!' : 'CONSUMED BY DARKNESS :(', {
         fontFamily: 'Courier New, monospace',
         fontSize: this.result.won ? '28px' : '22px',
         fontStyle: 'bold',

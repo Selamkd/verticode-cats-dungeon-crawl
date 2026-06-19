@@ -15,7 +15,6 @@ type CatCard = {
   card: Phaser.GameObjects.Rectangle;
   portrait: Phaser.GameObjects.Sprite;
   nameText: Phaser.GameObjects.Text;
-  descText: Phaser.GameObjects.Text;
   index: number;
 };
 
@@ -27,7 +26,7 @@ export class MenuScene extends Phaser.Scene {
   private detailStoryText?: Phaser.GameObjects.Text;
   private detailAbilityText?: Phaser.GameObjects.Text;
   private selectedPreview?: Phaser.GameObjects.Sprite;
-  private previewBaseY = 370;
+  private previewBaseY = 422;
 
   constructor() {
     super('Menu');
@@ -70,7 +69,7 @@ export class MenuScene extends Phaser.Scene {
     for (let i = 0; i < 40; i++) {
       const dust = this.add
         .image(Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT, 'dust')
-        .setAlpha(0.15 + Math.random() * 0.2);
+        .setAlpha(0.12 + Math.random() * 0.16);
 
       this.tweens.add({
         targets: dust,
@@ -82,54 +81,37 @@ export class MenuScene extends Phaser.Scene {
         onRepeat: () => {
           dust.x = Math.random() * GAME_WIDTH;
           dust.y = Math.random() * GAME_HEIGHT;
-          dust.alpha = 0.15 + Math.random() * 0.2;
+          dust.alpha = 0.12 + Math.random() * 0.16;
         },
       });
     }
   }
 
   private buildTitle() {
-    const titleY = 60;
-
     this.add
-      .text(GAME_WIDTH / 2, titleY, 'VERTICODE CATS', {
+      .text(GAME_WIDTH / 2, 48, 'VERTICODE CATS  ·  DUNGEON CRAWL', {
         fontFamily: 'Courier New, monospace',
-        fontSize: '34px',
+        fontSize: '28px',
         fontStyle: 'bold',
         color: PAL.title,
       })
       .setOrigin(0.5);
 
     this.add
-      .text(GAME_WIDTH / 2, titleY + 38, 'D U N G E O N   C R A W L', {
+      .text(GAME_WIDTH / 2, 82, "IT'S SPREADING", {
         fontFamily: 'Courier New, monospace',
-        fontSize: '14px',
-        color: PAL.accent,
+        fontSize: '17px',
+        fontStyle: 'bold',
+        color: PAL.danger,
       })
       .setOrigin(0.5);
 
-    const themeTag = this.add
-      .text(GAME_WIDTH / 2, titleY + 62, "— it's spreading —", {
+    this.add
+      .text(GAME_WIDTH / 2, 110, 'Choose the cat who wandered too far from the safe room.', {
         fontFamily: 'Georgia, serif',
         fontSize: '13px',
         fontStyle: 'italic',
-        color: '#665588',
-      })
-      .setOrigin(0.5);
-
-    this.tweens.add({
-      targets: themeTag,
-      alpha: 0.4,
-      duration: 2000,
-      yoyo: true,
-      repeat: -1,
-    });
-
-    this.add
-      .text(GAME_WIDTH / 2, 142, 'Choose your cat', {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '16px',
-        color: PAL.ui,
+        color: '#8f7181',
       })
       .setOrigin(0.5);
   }
@@ -138,75 +120,79 @@ export class MenuScene extends Phaser.Scene {
     this.catCards = [];
 
     const count = Math.min(CATS.length, CAT_SPRITES.length);
-    const startX = GAME_WIDTH / 2 - ((count - 1) * 86) / 2;
+    const rows = count > 4 ? [4, count - 4] : [count];
+    let catIndex = 0;
 
-    CATS.slice(0, count).forEach((cat: CatDefinition, index: number) => {
-      const x = startX + index * 86;
-      const y = 230;
+    rows.forEach((rowCount, rowIndex) => {
+      const startX = GAME_WIDTH / 2 - ((rowCount - 1) * 124) / 2;
+      const y = rowIndex === 0 ? 180 : 286;
 
-      const card = this.add
-        .rectangle(x, y, 74, 98, hexToNum(PAL.wallMid), 0.6)
-        .setStrokeStyle(2, hexToNum(PAL.accent), 0.3)
-        .setInteractive({ useHandCursor: true });
+      for (let rowPosition = 0; rowPosition < rowCount; rowPosition++) {
+        const cat = CATS[catIndex] as CatDefinition;
+        const index = catIndex;
+        const x = startX + rowPosition * 124;
 
-      const portrait = this.add
-        .sprite(x, y - 18, getCatSpriteKey(index), 0)
-        .setScale(CAT_MENU_DISPLAY_SCALE)
-        .setOrigin(0.5, 0.58);
+        const card = this.add
+          .rectangle(x, y, 90, 92, hexToNum(PAL.wallDark), 0.68)
+          .setStrokeStyle(2, hexToNum(PAL.wallMid), 0.34)
+          .setInteractive({ useHandCursor: true });
 
-      const nameText = this.add
-        .text(x, y + 30, cat.name, {
-          fontFamily: 'Courier New, monospace',
-          fontSize: '10px',
-          color: PAL.ui,
-        })
-        .setOrigin(0.5);
+        const portrait = this.add
+          .sprite(x, y - 14, getCatSpriteKey(index), 0)
+          .setScale(CAT_MENU_DISPLAY_SCALE)
+          .setOrigin(0.5, 0.58);
 
-      const descText = this.add
-        .text(x, y + 43, cat.desc, {
-          fontFamily: 'Georgia, serif',
-          fontSize: '8px',
-          fontStyle: 'italic',
-          color: '#888',
-        })
-        .setOrigin(0.5);
+        const nameText = this.add
+          .text(x, y + 32, cat.name, {
+            fontFamily: 'Courier New, monospace',
+            fontSize: cat.name.length > 10 ? '9px' : '10px',
+            fontStyle: 'bold',
+            color: PAL.ui,
+            align: 'center',
+            wordWrap: {
+              width: 82,
+            },
+          })
+          .setOrigin(0.5);
 
-      card.on('pointerdown', () => {
-        sfx.resume();
-        sfx.select();
-        this.selectCat(index);
-      });
+        card.on('pointerdown', () => {
+          sfx.resume();
+          sfx.select();
+          this.selectCat(index);
+        });
 
-      card.on('pointerover', () => {
-        if (index !== this.selectedCat) {
-          card.setFillStyle(hexToNum(PAL.wallHi), 0.7);
-        }
-      });
+        card.on('pointerover', () => {
+          if (index !== this.selectedCat) {
+            card.setFillStyle(hexToNum(PAL.wallMid), 0.54);
+          }
+        });
 
-      card.on('pointerout', () => {
-        if (index !== this.selectedCat) {
-          card.setFillStyle(hexToNum(PAL.wallMid), 0.6);
-        }
-      });
+        card.on('pointerout', () => {
+          if (index !== this.selectedCat) {
+            card.setFillStyle(hexToNum(PAL.wallDark), 0.68);
+          }
+        });
 
-      this.catCards.push({
-        card,
-        portrait,
-        nameText,
-        descText,
-        index,
-      });
+        this.catCards.push({
+          card,
+          portrait,
+          nameText,
+          index,
+        });
+
+        catIndex++;
+      }
     });
   }
 
   private buildDetailsPanel() {
     this.add
-      .rectangle(GAME_WIDTH / 2, 372, 640, 132, 0x0a0a14, 0.82)
-      .setStrokeStyle(1, hexToNum(PAL.accent), 0.25);
+      .rectangle(GAME_WIDTH / 2, 426, 660, 154, 0x0a0a14, 0.86)
+      .setStrokeStyle(1, hexToNum(PAL.wallMid), 0.46);
 
     this.selectedPreview = this.add
       .sprite(GAME_WIDTH / 2 - 260, this.previewBaseY, getCatSpriteKey(0), 0)
-      .setScale(1.15)
+      .setScale(1.05)
       .setOrigin(0.5, 0.58);
 
     this.tweens.add({
@@ -219,53 +205,58 @@ export class MenuScene extends Phaser.Scene {
     });
 
     this.detailNameText = this.add
-      .text(GAME_WIDTH / 2 + 30, 324, '', {
+      .text(GAME_WIDTH / 2 + 38, 360, '', {
         fontFamily: 'Courier New, monospace',
         fontSize: '15px',
         fontStyle: 'bold',
-        color: PAL.gold,
+        color: PAL.title,
+        align: 'center',
+        wordWrap: {
+          width: 470,
+        },
       })
       .setOrigin(0.5);
 
     this.detailStoryText = this.add
-      .text(GAME_WIDTH / 2 + 30, 360, '', {
+      .text(GAME_WIDTH / 2 + 38, 402, '', {
         fontFamily: 'Georgia, serif',
-        fontSize: '13px',
+        fontSize: '11px',
         fontStyle: 'italic',
-        color: '#a8a0ba',
+        color: '#b8a5b0',
         align: 'center',
         wordWrap: {
-          width: 480,
+          width: 470,
         },
-        lineSpacing: 4,
+        lineSpacing: 3,
       })
       .setOrigin(0.5);
 
     this.detailAbilityText = this.add
-      .text(GAME_WIDTH / 2 + 30, 420, '', {
+      .text(GAME_WIDTH / 2 + 38, 468, '', {
         fontFamily: 'Courier New, monospace',
-        fontSize: '12px',
+        fontSize: '10px',
         color: PAL.accent,
         align: 'center',
         wordWrap: {
-          width: 480,
+          width: 470,
         },
+        lineSpacing: 3,
       })
       .setOrigin(0.5);
   }
 
   private buildStartButton() {
     const startButton = this.add
-      .rectangle(GAME_WIDTH / 2, 510, 190, 48, hexToNum(PAL.accent), 0.9)
-      .setStrokeStyle(2, 0xffffff, 0.2)
+      .rectangle(GAME_WIDTH / 2, 536, 204, 48, hexToNum(PAL.accent), 0.88)
+      .setStrokeStyle(2, 0xffffff, 0.18)
       .setInteractive({ useHandCursor: true });
 
     this.add
-      .text(GAME_WIDTH / 2, 510, 'ENTER THE DUNGEON', {
+      .text(GAME_WIDTH / 2, 536, 'ENTER THE DUNGEON', {
         fontFamily: 'Courier New, monospace',
         fontSize: '12px',
         fontStyle: 'bold',
-        color: '#fff',
+        color: PAL.title,
       })
       .setOrigin(0.5);
 
@@ -286,18 +277,18 @@ export class MenuScene extends Phaser.Scene {
 
   private buildControlsText() {
     this.add
-      .text(GAME_WIDTH / 2, 560, 'Arrow keys to choose  ·  Enter or Space to start  ·  Tap cards on mobile', {
+      .text(GAME_WIDTH / 2, 580, 'Arrow keys to choose  ·  Enter or Space to start  ·  Tap cards on mobile', {
         fontFamily: 'Courier New, monospace',
-        fontSize: '11px',
+        fontSize: '10px',
         color: '#555266',
       })
       .setOrigin(0.5);
 
     this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 16, 'verticode ©', {
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 10, 'abilities are currently recharging in the basement', {
         fontFamily: 'Courier New, monospace',
-        fontSize: '10px',
-        color: '#332e44',
+        fontSize: '9px',
+        color: '#3c3446',
       })
       .setOrigin(0.5);
   }
@@ -311,17 +302,17 @@ export class MenuScene extends Phaser.Scene {
 
       cardData.card.setStrokeStyle(
         selected ? 3 : 2,
-        selected ? hexToNum(PAL.gold) : hexToNum(PAL.accent),
-        selected ? 1 : 0.3,
+        hexToNum(PAL.wallMid),
+        selected ? 0.92 : 0.34,
       );
 
       cardData.card.setFillStyle(
-        hexToNum(selected ? PAL.wallHi : PAL.wallMid),
-        selected ? 0.9 : 0.6,
+        hexToNum(selected ? PAL.wallHi : PAL.wallDark),
+        selected ? 0.76 : 0.68,
       );
 
       cardData.portrait.setScale(selected ? CAT_MENU_DISPLAY_SCALE * 1.12 : CAT_MENU_DISPLAY_SCALE);
-      cardData.nameText.setColor(selected ? PAL.gold : PAL.ui);
+      cardData.nameText.setColor(selected ? PAL.title : PAL.ui);
     });
 
     const cat = CATS[this.selectedCat];
@@ -330,11 +321,11 @@ export class MenuScene extends Phaser.Scene {
     this.selectedPreview?.setFrame(0);
 
     if (this.selectedPreview) {
-      this.selectedPreview.setScale(1.15);
+      this.selectedPreview.setScale(1.05);
       this.tweens.add({
         targets: this.selectedPreview,
-        scaleX: 1.32,
-        scaleY: 1.32,
+        scaleX: 1.2,
+        scaleY: 1.2,
         duration: 160,
         yoyo: true,
         ease: 'Back.easeOut',
@@ -344,7 +335,7 @@ export class MenuScene extends Phaser.Scene {
     this.detailNameText?.setText(`${cat.name}  ·  ${cat.desc}`);
     this.detailStoryText?.setText(cat.backstory);
     this.detailAbilityText?.setText(
-      `Future ability: ${cat.ability.name} — ${cat.ability.summary}`,
+      `ABILITY PREVIEW: ${cat.ability.name}\n${cat.ability.summary}\nStatus: recharging...... ·`,
     );
   }
 
