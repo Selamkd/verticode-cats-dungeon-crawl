@@ -12,5 +12,5 @@ export const PAL = {
   danger: '#ff4444',
   ui: '#d0cce0',
   title: '#f0e8d0',
-  accent: '#9b6dff',
+  accent: '#c7475d',
 } as const;
