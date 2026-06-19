@@ -4,7 +4,6 @@ import {
   CAT_SPRITE_DISPLAY_SCALE,
   SpriteDirection as CatDirection,
   getCatFrame,
-  getCatSpriteKey,
 } from '../helpers/catSpriteConfig';
 import { hexToNum } from '../helpers/color';
 import { CATS } from '../model/cats';
@@ -209,97 +208,167 @@ export class GameScene extends Phaser.Scene {
     this.awaitingStart = true;
 
     const layer = this.add.container(0, 0).setDepth(90);
+    const cat = CATS[this.catIndex] ?? CATS[0];
 
     const backdrop = this.add
-      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05050e, 0.82)
+      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05050e, 0.84)
       .setInteractive();
 
+    const panelW = 480;
+    const panelH = 390;
+    const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
+
+    const outerGlow = this.add
+      .rectangle(cx, cy, panelW + 4, panelH + 4, hexToNum(PAL.accent), 0.1);
+
     const panel = this.add
-      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 470, 380, 0x0c0c18, 0.97)
-      .setStrokeStyle(2, hexToNum(PAL.wallMid), 0.5);
+      .rectangle(cx, cy, panelW, panelH, hexToNum(PAL.floorB), 0.96)
+      .setStrokeStyle(1, hexToNum(PAL.wallMid), 0.5);
 
-    const title = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 150, 'THE DARKNESS IS SPREADING!!!', {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '20px',
-        fontStyle: 'bold',
-        color: PAL.wallMid,
-        align: 'center',
-      })
-      .setOrigin(0.5);
-
-    const goal = this.add
-      .text(
-        GAME_WIDTH / 2,
-        GAME_HEIGHT / 2 - 96,
-        'Smoke is pouring in from every corner of the dungeon.\nMemorise the order the fuses light up, then relight\nthem in that exact order to hold back the dark.',
-        {
-          fontFamily: 'Georgia, serif',
-          fontSize: '13px',
-          fontStyle: 'italic',
-          color: '#b8b0ca',
-          align: 'center',
-          lineSpacing: 5,
-        },
-      )
-      .setOrigin(0.5);
-
-    const controls = this.add
-      .text(
-        GAME_WIDTH / 2,
-        GAME_HEIGHT / 2 - 6,
-        'MOVE   Arrow Keys  /  W A S D\nLIGHT FUSE   Space  /  E   (stand next to it)\nMOBILE   On-screen pad  +  ACT button',
-        {
-          fontFamily: 'Courier New, monospace',
-          fontSize: '13px',
-          color: PAL.fuseLit,
-          align: 'center',
-          lineSpacing: 8,
-        },
-      )
-      .setOrigin(0.5);
-
-    const warn = this.add
-      .text(
-        GAME_WIDTH / 2,
-        GAME_HEIGHT / 2 + 78,
-        'Each correct fuse beats the darkness back.\nA wrong fuse feeds it. You have 2 minutes.',
-        {
-          fontFamily: 'Georgia, serif',
-          fontSize: '12px',
-          fontStyle: 'italic',
-          color: PAL.ui,
-          align: 'center',
-          lineSpacing: 4,
-        },
-      )
-      .setOrigin(0.5);
-
-    const beginBg = this.add
-      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 142, 200, 46, hexToNum(PAL.accent), 0.92)
-      .setStrokeStyle(2, 0xffffff, 0.25)
-      .setInteractive({ useHandCursor: true });
-
-    const beginText = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 142, 'BEGIN  ▸', {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '14px',
-        fontStyle: 'bold',
-        color: '#fff',
-      })
+    const headerY = cy - panelH / 2 + 46;
+    const catPreview = this.add
+      .sprite(cx - 156, headerY, cat.spriteKey, 0)
+      .setScale(0.9)
       .setOrigin(0.5);
 
     this.tweens.add({
-      targets: beginBg,
-      scaleX: 1.04,
-      scaleY: 1.04,
-      duration: 800,
+      targets: catPreview,
+      y: headerY + 5,
+      duration: 1400,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
 
-    layer.add([backdrop, panel, title, goal, controls, warn, beginBg, beginText]);
+    const title = this.add
+      .text(cx + 10, headerY - 14, 'THE DARKNESS IS SPREADING!!!', {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '14px',
+        fontStyle: 'bold',
+        color: PAL.danger,
+      })
+      .setOrigin(0.5, 0.5);
+
+    const subtitle = this.add
+      .text(cx + 10, headerY + 8, `${cat.name} wandered too far from the safe room.`, {
+        fontFamily: 'Georgia, serif',
+        fontSize: '11px',
+        fontStyle: 'italic',
+        color: '#8a7e8a',
+      })
+      .setOrigin(0.5, 0.5);
+
+    const dividerY = headerY + 30;
+    const divider = this.add
+      .rectangle(cx, dividerY, panelW - 60, 1, hexToNum(PAL.wallMid), 0.3);
+
+    const goalY = dividerY + 28;
+    const goal = this.add
+      .text(
+        cx,
+        goalY,
+        'Smoke is pouring in from every corner.\nMemorise the order the fuses light up,\nthen relight them in that exact sequence.',
+        {
+          fontFamily: 'Georgia, serif',
+          fontSize: '12px',
+          fontStyle: 'italic',
+          color: '#9a8e96',
+          align: 'center',
+          lineSpacing: 5,
+        },
+      )
+      .setOrigin(0.5, 0);
+
+    const controlsY = goalY + 68;
+
+    const controlsBg = this.add
+      .rectangle(cx, controlsY + 28, panelW - 50, 78, hexToNum(PAL.wallDark), 0.5)
+      .setStrokeStyle(1, hexToNum(PAL.wallMid), 0.2);
+
+    const controlLines = [
+      { label: 'MOVE', value: 'Arrow Keys  /  W A S D' },
+      { label: 'LIGHT FUSE', value: 'Space  /  E  (stand next to it)' },
+      { label: 'MOBILE', value: 'On-screen pad  +  ACT button' },
+    ];
+
+    const controlTexts: Phaser.GameObjects.Text[] = [];
+    controlLines.forEach((line, i) => {
+      const lineY = controlsY + 6 + i * 20;
+
+      const labelText = this.add
+        .text(cx - 170, lineY, line.label, {
+          fontFamily: 'Courier New, monospace',
+          fontSize: '10px',
+          fontStyle: 'bold',
+          color: PAL.fuseGlow,
+        })
+        .setOrigin(0, 0.5);
+
+      const valueText = this.add
+        .text(cx - 56, lineY, line.value, {
+          fontFamily: 'Courier New, monospace',
+          fontSize: '10px',
+          color: PAL.ui,
+        })
+        .setOrigin(0, 0.5);
+
+      controlTexts.push(labelText, valueText);
+    });
+
+    const warnY = controlsY + 82;
+    const warn = this.add
+      .text(
+        cx,
+        warnY,
+        'Each correct fuse beats the darkness back. A wrong fuse feeds it.\nYou have 2 minutes.',
+        {
+          fontFamily: 'Georgia, serif',
+          fontSize: '10px',
+          fontStyle: 'italic',
+          color: '#6a6270',
+          align: 'center',
+          lineSpacing: 4,
+        },
+      )
+      .setOrigin(0.5, 0);
+
+    const btnY = cy + panelH / 2 - 38;
+    const btnW = 180;
+    const btnH = 36;
+
+    const beginBg = this.add
+      .rectangle(cx, btnY, btnW, btnH, hexToNum(PAL.accent), 0.9)
+      .setStrokeStyle(1, 0xffffff, 0.1)
+      .setInteractive({ useHandCursor: true });
+
+    const beginText = this.add
+      .text(cx, btnY, 'BEGIN', {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: PAL.title,
+      })
+      .setOrigin(0.5);
+
+    this.tweens.add({
+      targets: beginBg,
+      scaleX: 1.03,
+      scaleY: 1.03,
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+
+    layer.add([
+      backdrop, outerGlow, panel,
+      catPreview, title, subtitle,
+      divider, goal,
+      controlsBg, ...controlTexts,
+      warn,
+      beginBg, beginText,
+    ]);
 
     backdrop.on('pointerdown', () => this.beginGame());
     beginBg.on('pointerdown', () => this.beginGame());
@@ -442,7 +511,7 @@ export class GameScene extends Phaser.Scene {
       delay += 600;
     });
 
-    this.time.delayedCall(delay + 2000, () => {
+    this.time.delayedCall(delay + 1000, () => {
       this.fuseSprites.forEach((fuse) => {
         this.tweens.add({
           targets: fuse.numText,
@@ -1044,7 +1113,6 @@ export class GameScene extends Phaser.Scene {
     });
 
     const cat = CATS[this.catIndex] ?? CATS[0];
-    const spriteKey = getCatSpriteKey(this.catIndex);
 
     this.playerShadow = this.add
       .ellipse(x, y + 11, 26, 9, 0x000000, 0.35)
@@ -1055,7 +1123,7 @@ export class GameScene extends Phaser.Scene {
       .setDepth(9);
 
     this.playerSprite = this.add
-      .sprite(x, y, spriteKey, getCatFrame('down'))
+      .sprite(x, y, cat.spriteKey, getCatFrame('down'))
       .setDepth(10)
       .setScale(CAT_SPRITE_DISPLAY_SCALE)
       .setOrigin(0.5, 0.58);

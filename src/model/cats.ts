@@ -40,6 +40,7 @@ function shuffleCats(cats: CatDefinition[]) {
 
 export const CATS: CatDefinition[] = shuffleCats([
   {
+    
     name: 'Yuki',
     spriteKey: 'cat_0_yuki',
     body: '#f1efe7',
