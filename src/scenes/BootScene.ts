@@ -91,36 +91,51 @@ export class BootScene extends Phaser.Scene {
       const cy = TILE_SIZE / 2;
 
       if (lit) {
-        const glow = ctx.createRadialGradient(cx, cy, 2, cx, cy, TILE_SIZE / 2);
-        glow.addColorStop(0, PAL.fuseLit);
-        glow.addColorStop(0.4, PAL.fuseGlow);
+        const glow = ctx.createRadialGradient(cx, cy, 1, cx, cy, TILE_SIZE / 2);
+        glow.addColorStop(0, '#fff6d8');
+        glow.addColorStop(0.3, PAL.fuseLit);
+        glow.addColorStop(0.6, PAL.fuseGlow);
         glow.addColorStop(1, 'rgba(255,170,34,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
+      } else {
+        const glow = ctx.createRadialGradient(cx, cy, 1, cx, cy, 15);
+        glow.addColorStop(0, 'rgba(120,90,40,0.35)');
+        glow.addColorStop(1, 'rgba(120,90,40,0)');
         ctx.fillStyle = glow;
         ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
       }
 
       ctx.fillStyle = lit ? PAL.fuseLit : PAL.fuseOff;
       ctx.beginPath();
-      ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 11, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = lit ? '#fff8e0' : '#332210';
+      ctx.fillStyle = lit ? '#fff8e0' : '#3a2812';
       ctx.beginPath();
-      ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 6, 0, Math.PI * 2);
       ctx.fill();
 
       if (lit) {
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(cx - 2, cy - 2, 1.5, 0, Math.PI * 2);
+        ctx.arc(cx - 3, cy - 3, 2.5, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      ctx.strokeStyle = lit ? PAL.gold : '#44301a';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = lit ? '#fff1b8' : '#4a3420';
+      ctx.lineWidth = lit ? 3 : 2;
       ctx.beginPath();
-      ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 11, 0, Math.PI * 2);
       ctx.stroke();
+
+      if (lit) {
+        ctx.strokeStyle = 'rgba(255,210,120,0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 15, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
       texture.refresh();
     }

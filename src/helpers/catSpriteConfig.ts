@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { CATS } from '../model/cats';
 
 const cat0Yuki = new URL('../assets/cats/sheets_64/cat_0_yuki.png', import.meta.url).href;
 const cat1Kika = new URL('../assets/cats/sheets_64/cat_1_kika.png', import.meta.url).href;
@@ -22,8 +23,8 @@ export type CatSpriteKey = (typeof CAT_SPRITES)[number];
 export type SpriteDirection = 'down' | 'up' | 'left' | 'right';
 
 export const CAT_SPRITE_FRAME_SIZE = 64;
-export const CAT_SPRITE_DISPLAY_SCALE = 0.62;
-export const CAT_MENU_DISPLAY_SCALE = 0.82;
+export const CAT_SPRITE_DISPLAY_SCALE = 0.82;
+export const CAT_MENU_DISPLAY_SCALE = 0.9;
 export const CAT_OVER_DISPLAY_SCALE = 1.35;
 
 export const CAT_SPRITE_URLS: Record<CatSpriteKey, string> = {
@@ -48,7 +49,13 @@ export function getCatFrame(direction: SpriteDirection) {
 }
 
 export function getCatSpriteKey(catIndex: number) {
-  return CAT_SPRITES[catIndex] ?? CAT_SPRITES[0];
+  const spriteKey = CATS[catIndex]?.spriteKey;
+
+  if (CAT_SPRITES.includes(spriteKey as CatSpriteKey)) {
+    return spriteKey as CatSpriteKey;
+  }
+
+  return CAT_SPRITES[0];
 }
 
 export function preloadCatSprites(scene: Phaser.Scene) {
