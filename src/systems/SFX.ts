@@ -111,6 +111,75 @@ class SFX {
       this.tone(523, 0.12, 'triangle', 0.14);
     }, 80);
   }
+
+
+    private glide(
+    startFrequency: number,
+    peakFrequency: number,
+    endFrequency: number,
+    duration: number,
+    type: OscillatorType = 'triangle',
+    volume = 0.14,
+  ) {
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+
+    const oscillator = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+
+    oscillator.type = type;
+
+    oscillator.frequency.setValueAtTime(startFrequency, now);
+    oscillator.frequency.linearRampToValueAtTime(
+      peakFrequency,
+      now + duration * 0.35,
+    );
+    oscillator.frequency.exponentialRampToValueAtTime(
+      endFrequency,
+      now + duration,
+    );
+
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(950, now);
+    filter.Q.setValueAtTime(7, now);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.exponentialRampToValueAtTime(volume, now + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    oscillator.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    oscillator.start(now);
+    oscillator.stop(now + duration);
+  }
+
+  meow() {
+    this.glide(420, 720, 260, 0.42, 'triangle', 0.16);
+
+    window.setTimeout(() => {
+      this.glide(520, 760, 340, 0.28, 'sine', 0.07);
+    }, 35);
+  }
+
+  tinyMeow() {
+    this.glide(620, 920, 460, 0.22, 'triangle', 0.11);
+  }
+
+  sadMeow() {
+    this.glide(360, 520, 180, 0.65, 'sawtooth', 0.12);
+  }
+
+  attentionSiren() {
+    this.glide(500, 980, 300, 0.55, 'sawtooth', 0.15);
+
+    window.setTimeout(() => {
+      this.glide(620, 1100, 360, 0.45, 'triangle', 0.1);
+    }, 130);
+  }
 }
 
 export const sfx = new SFX();

@@ -211,7 +211,8 @@ this.input.keyboard?.on('keydown-DOWN', () => {
 
       card.on('pointerdown', () => {
         sfx.resume();
-        sfx.select();
+       
+        sfx.attentionSiren();
         if (this.selectedCat === index && this.modalVisible) {
           this.startGame();
           return;
