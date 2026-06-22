@@ -129,17 +129,25 @@ export class MenuScene extends Phaser.Scene {
     this.catCards = [];
 
     const count = Math.min(CATS.length, CAT_SPRITES.length);
-    const cardW = 42;
+    const cardW = 48;
     const cardH = 50;
     const gapX = 10;
-    const totalWidth = count * cardW + (count - 1) * gapX;
+    const gapY = 10;
+
+    const columns = Math.ceil(count / 1.1);
+    const totalWidth = columns * cardW + (columns - 1) * gapX;
     const startX = (GAME_WIDTH - totalWidth) / 2 + cardW / 2;
-    const y = 148;
+    const startY = 156;
+  
 
     for (let i = 0; i < count; i++) {
       const cat = CATS[i] as CatDefinition;
       const index = i;
-      const x = startX + i * (cardW + gapX);
+      const col = i % columns;
+      const row = Math.floor(i / columns);
+
+     const x = startX + col * (cardW + gapX);
+     const y = startY + row * (cardH + gapY);
 
       const glow = this.add
         .rectangle(x, y, cardW + 6, cardH + 6, hexToNum(PAL.accent), 0)
@@ -165,6 +173,41 @@ export class MenuScene extends Phaser.Scene {
           wordWrap: { width: cardW - 4 },
         })
         .setOrigin(0.5);
+
+this.input.keyboard?.on('keydown-UP', () => {
+  sfx.resume();
+  sfx.select();
+
+  const count = Math.min(CATS.length, CAT_SPRITES.length);
+  const columns = Math.ceil(count / 2);
+  this.selectCat(Math.max(0, this.selectedCat - columns));
+});
+
+this.input.keyboard?.on('keydown-DOWN', () => {
+  sfx.resume();
+  sfx.select();
+
+  const count = Math.min(CATS.length, CAT_SPRITES.length);
+  const columns = Math.ceil(count / 2);
+  this.selectCat(Math.min(count - 1, this.selectedCat + columns));
+});this.input.keyboard?.on('keydown-UP', () => {
+  sfx.resume();
+  sfx.select();
+
+  const count = Math.min(CATS.length, CAT_SPRITES.length);
+  const columns = Math.ceil(count / 2);
+  this.selectCat(Math.max(0, this.selectedCat - columns));
+});
+
+this.input.keyboard?.on('keydown-DOWN', () => {
+  sfx.resume();
+  sfx.select();
+
+  const count = Math.min(CATS.length, CAT_SPRITES.length);
+  const columns = Math.ceil(count / 2);
+  this.selectCat(Math.min(count - 1, this.selectedCat + columns));
+});
+
 
       card.on('pointerdown', () => {
         sfx.resume();

@@ -91,7 +91,7 @@ export class GameScene extends Phaser.Scene {
   private nextFuseIdx = 0;
   private litFuses = new Set<number>();
 
-  private gameTime = 120;
+  private gameTime = 60;
   private gameActive = false;
   private gameWon = false;
   private awaitingStart = false;
@@ -138,7 +138,7 @@ export class GameScene extends Phaser.Scene {
     this.nextFuseIdx = 0;
     this.litFuses = new Set<number>();
 
-    this.gameTime = 120;
+    this.gameTime = 60;
     this.gameActive = false;
     this.gameWon = false;
     this.awaitingStart = false;
@@ -321,7 +321,7 @@ export class GameScene extends Phaser.Scene {
       .text(
         cx,
         warnY,
-        'Each correct fuse beats the darkness back. A wrong fuse feeds it.\nYou have 2 minutes.',
+        'Each correct fuse beats the darkness back. A wrong fuse feeds it.\nYou have 1 minute.',
         {
           fontFamily: 'Georgia, serif',
           fontSize: '10px',
@@ -482,7 +482,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private showSequence() {
-    this.statusText?.setText('MEMORISE!');
+    this.showCenterText('MEMORISE!', PAL.accent, 800);
 
     let delay = 0;
 
@@ -492,7 +492,8 @@ export class GameScene extends Phaser.Scene {
         if (!fuse) return;
         sfx.seq();
         fuse.numText.setText(String(sequencePosition + 1));
-
+        fuse.numText.setColor(PAL.accent);
+        fuse.numText.setStroke('#000000', 5);
         this.tweens.add({
           targets: fuse.numText,
           alpha: 1,
@@ -638,7 +639,7 @@ export class GameScene extends Phaser.Scene {
     ctx.fillStyle = `rgba(5, 5, 16, ${baseAlpha})`;
     ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    const elapsed = (120 - this.gameTime) / 120;
+    const elapsed = (60 - this.gameTime) / 60;
     const creep = Phaser.Math.Clamp(
       0.05 + elapsed * 0.92 + this.darkLevel * 0.35,
       0,
@@ -649,7 +650,7 @@ export class GameScene extends Phaser.Scene {
 
     ctx.globalCompositeOperation = 'destination-out';
 
-    const playerLightRadius = Math.max(58, 120 - this.darkLevel * 48);
+    const playerLightRadius = Math.max(58, 60 - this.darkLevel * 48);
 
     this.eraseLightHole(
       ctx,
@@ -1162,7 +1163,7 @@ export class GameScene extends Phaser.Scene {
       .setStrokeStyle(1, hexToNum(PAL.accent), 0.3);
 
     this.timerText = this.add
-      .text(GAME_WIDTH / 2, 16, '2:00', {
+      .text(GAME_WIDTH / 2, 16, '1:00', {
         fontFamily: 'Courier New, monospace',
         fontSize: '16px',
         fontStyle: 'bold',
