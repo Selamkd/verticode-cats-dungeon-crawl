@@ -8,6 +8,7 @@ const CAT_SPRITE_URLS = {
   cat_4_june_joe: new URL('../assets/cats/sheets_64/cat_4_june_joe.png', import.meta.url).href,
   cat_5_merin: new URL('../assets/cats/sheets_64/cat_5_merin.png', import.meta.url).href,
   cat_6_teddy: new URL('../assets/cats/sheets_64/cat_6_teddy.png', import.meta.url).href,
+  cat_7_lily: new URL('../assets/cats/sheets_64/cat_7_lily.png', import.meta.url).href,
 } as const;
 
 export const CAT_SPRITES = [
@@ -18,6 +19,7 @@ export const CAT_SPRITES = [
   'cat_4_june_joe',
   'cat_5_merin',
   'cat_6_teddy',
+  'cat_7_lily',
 ] as const;
 
 export type CatSpriteKey = (typeof CAT_SPRITES)[number];

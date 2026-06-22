@@ -205,7 +205,7 @@ export class MenuScene extends Phaser.Scene {
 
   private buildModal() {
     const modalW = 480;
-    const modalH = 244;
+    const modalH = 254;
 
     const modalX = GAME_WIDTH / 2;
     const modalY = 360;
@@ -281,6 +281,8 @@ export class MenuScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0);
     this.modalGroup.add(this.modalStoryText);
+
+    
 
     this.modalAbilityLabel = this.add
       .text(textX, -modalH / 2 + 118, '', {
