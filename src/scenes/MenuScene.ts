@@ -4,7 +4,6 @@ import { sfx } from '../systems/SFX';
 import {
   CAT_MENU_DISPLAY_SCALE,
   CAT_SPRITES,
-  getCatSpriteKey,
 } from '../helpers/catSpriteConfig';
 import { hexToNum } from '../helpers/color';
 import { CatDefinition, CATS } from '../model/cats';
@@ -16,17 +15,24 @@ type CatCard = {
   portrait: Phaser.GameObjects.Sprite;
   nameText: Phaser.GameObjects.Text;
   index: number;
+  glow: Phaser.GameObjects.Rectangle;
 };
 
 export class MenuScene extends Phaser.Scene {
   private selectedCat = 0;
   private catCards: CatCard[] = [];
-
-  private detailNameText?: Phaser.GameObjects.Text;
-  private detailStoryText?: Phaser.GameObjects.Text;
-  private detailAbilityText?: Phaser.GameObjects.Text;
-  private selectedPreview?: Phaser.GameObjects.Sprite;
-  private previewBaseY = 422;
+  private modalGroup: Phaser.GameObjects.Container | null = null;
+  private modalVisible = false;
+  private modalPreview?: Phaser.GameObjects.Sprite;
+  private modalNameText?: Phaser.GameObjects.Text;
+  private modalDescText?: Phaser.GameObjects.Text;
+  private modalStoryText?: Phaser.GameObjects.Text;
+  private modalAbilityLabel?: Phaser.GameObjects.Text;
+  private modalAbilityText?: Phaser.GameObjects.Text;
+  private modalBg?: Phaser.GameObjects.Rectangle;
+  private modalInner?: Phaser.GameObjects.Rectangle;
+  private modalAbilitySummary?: Phaser.GameObjects.Text;
+  private previewBaseY = 0;
 
   constructor() {
     super('Menu');
@@ -38,8 +44,7 @@ export class MenuScene extends Phaser.Scene {
     this.buildDust();
     this.buildTitle();
     this.buildCatCards();
-    this.buildDetailsPanel();
-    this.buildStartButton();
+    this.buildModal();
     this.buildControlsText();
 
     this.selectCat(0);
@@ -69,19 +74,19 @@ export class MenuScene extends Phaser.Scene {
     for (let i = 0; i < 40; i++) {
       const dust = this.add
         .image(Math.random() * GAME_WIDTH, Math.random() * GAME_HEIGHT, 'dust')
-        .setAlpha(0.12 + Math.random() * 0.16);
+        .setAlpha(0.1 + Math.random() * 0.14);
 
       this.tweens.add({
         targets: dust,
-        y: dust.y + 60 + Math.random() * 80,
-        x: dust.x + Phaser.Math.Between(-30, 30),
+        y: dust.y + 50 + Math.random() * 70,
+        x: dust.x + Phaser.Math.Between(-20, 20),
         alpha: 0,
-        duration: 4000 + Math.random() * 4000,
+        duration: 5000 + Math.random() * 4000,
         repeat: -1,
         onRepeat: () => {
           dust.x = Math.random() * GAME_WIDTH;
           dust.y = Math.random() * GAME_HEIGHT;
-          dust.alpha = 0.12 + Math.random() * 0.16;
+          dust.alpha = 0.1 + Math.random() * 0.14;
         },
       });
     }
@@ -89,29 +94,33 @@ export class MenuScene extends Phaser.Scene {
 
   private buildTitle() {
     this.add
-      .text(GAME_WIDTH / 2, 48, 'VERTICODE CATS  ·  DUNGEON CRAWL', {
+      .text(GAME_WIDTH / 2, 36, 'VERTICODE CATS', {
         fontFamily: 'Courier New, monospace',
-        fontSize: '28px',
+        fontSize: '30px',
         fontStyle: 'bold',
         color: PAL.title,
       })
       .setOrigin(0.5);
 
     this.add
-      .text(GAME_WIDTH / 2, 82, "IT'S SPREADING", {
+      .text(GAME_WIDTH / 2, 64, 'DUNGEON CRAWL', {
         fontFamily: 'Courier New, monospace',
-        fontSize: '17px',
+        fontSize: '13px',
         fontStyle: 'bold',
-        color: PAL.danger,
+        color: PAL.ui,
+        letterSpacing: 6,
       })
       .setOrigin(0.5);
 
     this.add
-      .text(GAME_WIDTH / 2, 110, 'Choose the cat who wandered too far from the safe room.', {
-        fontFamily: 'Georgia, serif',
-        fontSize: '13px',
-        fontStyle: 'italic',
-        color: '#8f7181',
+      .rectangle(GAME_WIDTH / 2, 82, 180, 1, hexToNum(PAL.wallMid), 0.5);
+
+    this.add
+      .text(GAME_WIDTH / 2, 98, "THE DARKNESS IS SPREADING!!!", {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: PAL.accent,
       })
       .setOrigin(0.5);
   }
@@ -120,175 +129,311 @@ export class MenuScene extends Phaser.Scene {
     this.catCards = [];
 
     const count = Math.min(CATS.length, CAT_SPRITES.length);
-    const rows = count > 4 ? [4, count - 4] : [count];
-    let catIndex = 0;
+    const cardW = 48;
+    const cardH = 50;
+    const gapX = 10;
+    const gapY = 10;
 
-    rows.forEach((rowCount, rowIndex) => {
-      const startX = GAME_WIDTH / 2 - ((rowCount - 1) * 124) / 2;
-      const y = rowIndex === 0 ? 180 : 286;
+    const columns = Math.ceil(count / 1.1);
+    const totalWidth = columns * cardW + (columns - 1) * gapX;
+    const startX = (GAME_WIDTH - totalWidth) / 2 + cardW / 2;
+    const startY = 156;
+  
 
-      for (let rowPosition = 0; rowPosition < rowCount; rowPosition++) {
-        const cat = CATS[catIndex] as CatDefinition;
-        const index = catIndex;
-        const x = startX + rowPosition * 124;
+    for (let i = 0; i < count; i++) {
+      const cat = CATS[i] as CatDefinition;
+      const index = i;
+      const col = i % columns;
+      const row = Math.floor(i / columns);
 
-        const card = this.add
-          .rectangle(x, y, 90, 92, hexToNum(PAL.wallDark), 0.68)
-          .setStrokeStyle(2, hexToNum(PAL.wallMid), 0.34)
-          .setInteractive({ useHandCursor: true });
+     const x = startX + col * (cardW + gapX);
+     const y = startY + row * (cardH + gapY);
 
-        const portrait = this.add
-          .sprite(x, y - 14, getCatSpriteKey(index), 0)
-          .setScale(CAT_MENU_DISPLAY_SCALE)
-          .setOrigin(0.5, 0.58);
+      const glow = this.add
+        .rectangle(x, y, cardW + 6, cardH + 6, hexToNum(PAL.accent), 0)
+        .setOrigin(0.5);
 
-        const nameText = this.add
-          .text(x, y + 32, cat.name, {
-            fontFamily: 'Courier New, monospace',
-            fontSize: cat.name.length > 10 ? '9px' : '10px',
-            fontStyle: 'bold',
-            color: PAL.ui,
-            align: 'center',
-            wordWrap: {
-              width: 82,
-            },
-          })
-          .setOrigin(0.5);
+      const card = this.add
+        .rectangle(x, y, cardW, cardH, hexToNum(PAL.wallDark), 0.7)
+        .setStrokeStyle(1, hexToNum(PAL.wallMid), 0.3)
+        .setInteractive({ useHandCursor: true });
 
-        card.on('pointerdown', () => {
-          sfx.resume();
-          sfx.select();
-          this.selectCat(index);
-        });
+      const portrait = this.add
+        .sprite(x, y - 4, cat.spriteKey, 0)
+        .setScale(CAT_MENU_DISPLAY_SCALE * 0.55)
+        .setOrigin(0.5, 0.58);
 
-        card.on('pointerover', () => {
-          if (index !== this.selectedCat) {
-            card.setFillStyle(hexToNum(PAL.wallMid), 0.54);
-          }
-        });
+      const nameText = this.add
+        .text(x, y + 18, cat.name.split(' ')[0], {
+          fontFamily: 'Courier New, monospace',
+          fontSize: '7px',
+          fontStyle: 'bold',
+          color: PAL.title,
+          align: 'center',
+          wordWrap: { width: cardW - 4 },
+        })
+        .setOrigin(0.5);
 
-        card.on('pointerout', () => {
-          if (index !== this.selectedCat) {
-            card.setFillStyle(hexToNum(PAL.wallDark), 0.68);
-          }
-        });
+this.input.keyboard?.on('keydown-UP', () => {
+  sfx.resume();
+  sfx.select();
 
-        this.catCards.push({
-          card,
-          portrait,
-          nameText,
-          index,
-        });
+  const count = Math.min(CATS.length, CAT_SPRITES.length);
+  const columns = Math.ceil(count / 2);
+  this.selectCat(Math.max(0, this.selectedCat - columns));
+});
 
-        catIndex++;
-      }
-    });
+this.input.keyboard?.on('keydown-DOWN', () => {
+  sfx.resume();
+  sfx.select();
+
+  const count = Math.min(CATS.length, CAT_SPRITES.length);
+  const columns = Math.ceil(count / 2);
+  this.selectCat(Math.min(count - 1, this.selectedCat + columns));
+});this.input.keyboard?.on('keydown-UP', () => {
+  sfx.resume();
+  sfx.select();
+
+  const count = Math.min(CATS.length, CAT_SPRITES.length);
+  const columns = Math.ceil(count / 2);
+  this.selectCat(Math.max(0, this.selectedCat - columns));
+});
+
+this.input.keyboard?.on('keydown-DOWN', () => {
+  sfx.resume();
+  sfx.select();
+
+  const count = Math.min(CATS.length, CAT_SPRITES.length);
+  const columns = Math.ceil(count / 2);
+  this.selectCat(Math.min(count - 1, this.selectedCat + columns));
+});
+
+
+      card.on('pointerdown', () => {
+        sfx.resume();
+        sfx.select();
+        if (this.selectedCat === index && this.modalVisible) {
+          this.startGame();
+          return;
+        }
+        this.selectCat(index);
+      });
+
+      card.on('pointerover', () => {
+        if (index !== this.selectedCat) {
+          card.setFillStyle(hexToNum(PAL.wallMid), 0.6);
+        }
+        this.showModal(index);
+      });
+
+      card.on('pointerout', () => {
+        if (index !== this.selectedCat) {
+          card.setFillStyle(hexToNum(PAL.wallDark), 0.7);
+        }
+        this.showModal(this.selectedCat);
+      });
+
+      this.catCards.push({ card, portrait, nameText, index, glow });
+    }
   }
 
-  private buildDetailsPanel() {
-    this.add
-      .rectangle(GAME_WIDTH / 2, 426, 660, 154, 0x0a0a14, 0.86)
-      .setStrokeStyle(1, hexToNum(PAL.wallMid), 0.46);
+  private getAbilityCountdown(): string {
+    const launch = new Date('2025-08-01T00:00:00');
+    const now = new Date();
+    const diff = launch.getTime() - now.getTime();
+    const days = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+    if (days === 0) return 'recharging... any moment now';
+    return `recharging... check back in ${days} day${days === 1 ? '' : 's'}`;
+  }
 
-    this.selectedPreview = this.add
-      .sprite(GAME_WIDTH / 2 - 260, this.previewBaseY, getCatSpriteKey(0), 0)
-      .setScale(1.05)
-      .setOrigin(0.5, 0.58);
+  private buildModal() {
+    const modalW = 480;
+    const modalH = 254;
+
+    const modalX = GAME_WIDTH / 2;
+    const modalY = 360;
+
+    this.modalGroup = this.add.container(modalX, modalY);
+
+    this.modalBg = this.add
+      .rectangle(0, 0, modalW + 4, modalH + 4, hexToNum(PAL.accent), 0.1)
+      .setOrigin(0.5);
+    this.modalGroup.add(this.modalBg);
+
+    this.modalInner = this.add
+      .rectangle(0, 0, modalW, modalH, hexToNum(PAL.wallDark), 0.94)
+      .setStrokeStyle(1, hexToNum(PAL.wallMid), 0.5)
+      .setOrigin(0.5);
+    this.modalGroup.add(this.modalInner);
+
+    const previewX = -modalW / 2 + 70;
+    this.previewBaseY = -14;
+
+    this.modalPreview = this.add
+      .sprite(previewX, this.previewBaseY, CATS[0].spriteKey, 0)
+      .setScale(1.1)
+      .setOrigin(0.5);
+    this.modalGroup.add(this.modalPreview);
 
     this.tweens.add({
-      targets: this.selectedPreview,
-      y: this.previewBaseY + 7,
+      targets: this.modalPreview,
+      y: this.previewBaseY + 6,
       duration: 1400,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
 
-    this.detailNameText = this.add
-      .text(GAME_WIDTH / 2 + 38, 360, '', {
+    const divider = this.add
+      .rectangle(previewX + 52, -10, 1, modalH - 50, hexToNum(PAL.wallHi), 0.25)
+      .setOrigin(0.5);
+    this.modalGroup.add(divider);
+
+    const textX = 40;
+    const textW = 290;
+
+    this.modalNameText = this.add
+      .text(textX, -modalH / 2 + 20, '', {
         fontFamily: 'Courier New, monospace',
-        fontSize: '15px',
+        fontSize: '14px',
         fontStyle: 'bold',
         color: PAL.title,
-        align: 'center',
-        wordWrap: {
-          width: 470,
-        },
+        wordWrap: { width: textW },
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5, 0);
+    this.modalGroup.add(this.modalNameText);
 
-    this.detailStoryText = this.add
-      .text(GAME_WIDTH / 2 + 38, 402, '', {
+    this.modalDescText = this.add
+      .text(textX, -modalH / 2 + 40, '', {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '9px',
+        color: PAL.fuseLit,
+        wordWrap: { width: textW },
+      })
+      .setOrigin(0.5, 0);
+    this.modalGroup.add(this.modalDescText);
+
+    this.modalStoryText = this.add
+      .text(textX, -modalH / 2 + 58, '', {
         fontFamily: 'Georgia, serif',
-        fontSize: '11px',
+        fontSize: '10px',
         fontStyle: 'italic',
-        color: '#b8a5b0',
-        align: 'center',
-        wordWrap: {
-          width: 470,
-        },
+        color: '#9a8e96',
+        wordWrap: { width: textW },
         lineSpacing: 3,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5, 0);
+    this.modalGroup.add(this.modalStoryText);
 
-    this.detailAbilityText = this.add
-      .text(GAME_WIDTH / 2 + 38, 468, '', {
+    
+
+    this.modalAbilityLabel = this.add
+      .text(textX, -modalH / 2 + 118, '', {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '9px',
+        fontStyle: 'italic',
+        color: PAL.fuseLit,
+        wordWrap: { width: textW },
+      })
+      .setOrigin(0.5, 0);
+    this.modalGroup.add(this.modalAbilityLabel);
+
+    this.modalAbilitySummary = this.add
+      .text(textX, -modalH / 2 + 132, '', {
+        fontFamily: 'Georgia, serif',
+        fontSize: '8px',
+        color: PAL.wallHi,
+        wordWrap: { width: textW },
+        lineSpacing: 2,
+      })
+      .setOrigin(0.5, 0);
+    this.modalGroup.add(this.modalAbilitySummary);
+
+    this.modalAbilityText = this.add
+      .text(textX, -modalH / 2 + 162, '', {
+        fontFamily: 'Courier New, monospace',
+        fontSize: '8px',
+        color: PAL.title,
+        fontStyle: 'italic',
+        wordWrap: { width: textW },
+      })
+      .setOrigin(0.5, 0);
+    this.modalGroup.add(this.modalAbilityText);
+
+    const btnW = 180;
+    const btnH = 34;
+    const btnY = modalH / 2 - 28;
+
+    const startBtn = this.add
+      .rectangle(0, btnY, btnW, btnH, hexToNum(PAL.accent), 0.9)
+      .setStrokeStyle(1, 0xffffff, 0.1)
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    this.modalGroup.add(startBtn);
+
+    const startLabel = this.add
+      .text(0, btnY, 'ENTER THE DUNGEON', {
         fontFamily: 'Courier New, monospace',
         fontSize: '10px',
-        color: PAL.accent,
-        align: 'center',
-        wordWrap: {
-          width: 470,
-        },
-        lineSpacing: 3,
-      })
-      .setOrigin(0.5);
-  }
-
-  private buildStartButton() {
-    const startButton = this.add
-      .rectangle(GAME_WIDTH / 2, 536, 204, 48, hexToNum(PAL.accent), 0.88)
-      .setStrokeStyle(2, 0xffffff, 0.18)
-      .setInteractive({ useHandCursor: true });
-
-    this.add
-      .text(GAME_WIDTH / 2, 536, 'ENTER THE DUNGEON', {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '12px',
         fontStyle: 'bold',
         color: PAL.title,
       })
       .setOrigin(0.5);
+    this.modalGroup.add(startLabel);
 
     this.tweens.add({
-      targets: startButton,
+      targets: [startBtn],
       scaleX: 1.03,
       scaleY: 1.03,
-      duration: 800,
+      duration: 900,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
 
-    startButton.on('pointerdown', () => {
+    startBtn.on('pointerdown', () => {
       this.startGame();
     });
+
+    this.modalGroup.setAlpha(0);
+    this.modalGroup.setScale(0.95);
+  }
+
+  private showModal(index: number) {
+    const count = Math.min(CATS.length, CAT_SPRITES.length);
+    const safeIndex = Phaser.Math.Clamp(index, 0, count - 1);
+    const cat = CATS[safeIndex];
+
+    this.modalPreview?.setTexture(cat.spriteKey);
+    this.modalPreview?.setFrame(0);
+
+    this.modalNameText?.setText(cat.name);
+    this.modalDescText?.setText(cat.desc);
+    this.modalStoryText?.setText(cat.backstory);
+    this.modalAbilityLabel?.setText(`⚡ ${cat.ability.name}`);
+    this.modalAbilitySummary?.setText(cat.ability.summary);
+    this.modalAbilityText?.setText(this.getAbilityCountdown());
+
+    if (!this.modalVisible) {
+      this.modalVisible = true;
+      this.tweens.killTweensOf(this.modalGroup!);
+      this.tweens.add({
+        targets: this.modalGroup,
+        alpha: 1,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 180,
+        ease: 'Back.easeOut',
+      });
+    }
   }
 
   private buildControlsText() {
     this.add
-      .text(GAME_WIDTH / 2, 580, 'Arrow keys to choose  ·  Enter or Space to start  ·  Tap cards on mobile', {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '10px',
-        color: '#555266',
-      })
-      .setOrigin(0.5);
-
-    this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 10, 'abilities are currently recharging in the basement', {
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 22, 'Arrows to browse  ·  Hover to inspect  ·  Enter to descend', {
         fontFamily: 'Courier New, monospace',
         fontSize: '9px',
-        color: '#3c3446',
+        color: '#4a4456',
       })
       .setOrigin(0.5);
   }
@@ -300,43 +445,40 @@ export class MenuScene extends Phaser.Scene {
     this.catCards.forEach((cardData) => {
       const selected = cardData.index === this.selectedCat;
 
+      cardData.glow.setFillStyle(
+        hexToNum(PAL.accent),
+        selected ? 0.18 : 0,
+      );
+
       cardData.card.setStrokeStyle(
-        selected ? 3 : 2,
-        hexToNum(PAL.wallMid),
-        selected ? 0.92 : 0.34,
+        selected ? 1.5 : 1,
+        hexToNum(selected ? PAL.floorA : PAL.wallHi),
+        selected ? 0.7 : 0.3,
       );
 
       cardData.card.setFillStyle(
-        hexToNum(selected ? PAL.wallHi : PAL.wallDark),
-        selected ? 0.76 : 0.68,
+        hexToNum(selected ? PAL.accent : PAL.wallHi),
+        selected ? 0.85 : 0.7,
       );
 
-      cardData.portrait.setScale(selected ? CAT_MENU_DISPLAY_SCALE * 1.12 : CAT_MENU_DISPLAY_SCALE);
+      cardData.portrait.setScale(
+        selected ? CAT_MENU_DISPLAY_SCALE * 0.62 : CAT_MENU_DISPLAY_SCALE * 0.55,
+      );
       cardData.nameText.setColor(selected ? PAL.title : PAL.ui);
     });
 
-    const cat = CATS[this.selectedCat];
+    this.showModal(this.selectedCat);
 
-    this.selectedPreview?.setTexture(getCatSpriteKey(this.selectedCat));
-    this.selectedPreview?.setFrame(0);
-
-    if (this.selectedPreview) {
-      this.selectedPreview.setScale(1.05);
+    if (this.modalPreview) {
       this.tweens.add({
-        targets: this.selectedPreview,
-        scaleX: 1.2,
-        scaleY: 1.2,
-        duration: 160,
+        targets: this.modalPreview,
+        scaleX: 1.25,
+        scaleY: 1.25,
+        duration: 140,
         yoyo: true,
         ease: 'Back.easeOut',
       });
     }
-
-    this.detailNameText?.setText(`${cat.name}  ·  ${cat.desc}`);
-    this.detailStoryText?.setText(cat.backstory);
-    this.detailAbilityText?.setText(
-      `ABILITY PREVIEW: ${cat.ability.name}\n${cat.ability.summary}\nStatus: recharging...... ·`,
-    );
   }
 
   private startGame() {

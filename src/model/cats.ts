@@ -6,7 +6,8 @@ export type CatAbilityId =
   | 'time_freeze'
   | 'sweater_glow'
   | 'dittoo'
-  | 'bestie_merge';
+  | 'bestie_merge'
+  | 'attention_siren';
 
 export type CatAbility = {
   id: CatAbilityId;
@@ -40,6 +41,7 @@ function shuffleCats(cats: CatDefinition[]) {
 
 export const CATS: CatDefinition[] = shuffleCats([
   {
+    
     name: 'Yuki',
     spriteKey: 'cat_0_yuki',
     body: '#f1efe7',
@@ -165,4 +167,24 @@ export const CATS: CatDefinition[] = shuffleCats([
         'Teddy freezes time for the first 30 seconds, stopping the darkness before it gets a chance to make things dramatic.',
     },
   },
+
+ {
+  name: 'Lily',
+  spriteKey: 'cat_7_lily',
+  body: '#2a1a16',
+  dark: '#090708',
+  ear: '#c07a4d',
+  eye: '#b6c76a',
+  pupil: '#1c1a10',
+  desc: 'Tiny wobbly tyrant',
+  backstory:
+    `Lily entered the dungeon the way she enters any room foolish enough to have a door: uninvited, vocal, and already disappointed. The dungeon is terrified of this tiny old woman, and it's right to be.`,
+  ability: {
+    id: 'attention_siren',
+    name: 'Attention Siren',
+    summary:
+      'Lily lets out a royal scream that briefly reveals nearby fuses and pushes the darkness back, but the dungeon remembers being yelled at and creeps faster afterward.',
+  },
+  }
 ]);
+

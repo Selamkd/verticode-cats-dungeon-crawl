@@ -117,5 +117,19 @@
     "frameHeight64": 64,
     "frameWidth128": 128,
     "frameHeight128": 128
-  }
+  },
+
+  {
+  "key": "cat_7_lily",
+  "name": "Lily",
+  "frame_order": [
+    "down",
+    "up",
+    "left",
+    "right"
+  ],
+  "sheet_64": "assets/cats/sheets_64/cat_7_lily.png",
+  "sheet_128": "assets/cats/sheets_128/cat_7_lily.png",
+  "source_sheet": "assets/cats/source_sheets/cat_7_lily_source.png"
+}
 ]
